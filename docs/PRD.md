@@ -1,6 +1,6 @@
 # Ferric POC --- Product Requirements Document
 
-**Version:** 0.3  
+**Version:** 0.4  
 **Date:** 2026-02-28  
 **Status:** Draft (POC Scope)
 
@@ -77,6 +77,27 @@ Introduce a Python backend that replaces static data paths/API stubs with real s
   - Shuffle
   - Repeat (off / one / all)
 - Switch between list and now-playing focused views
+
+### Phase 1.5 UX Baseline (Implemented)
+
+The current Phase 1 UX baseline includes the following behaviors and should be treated as the
+parity target for Phase 2 integration:
+
+1. List vs track-detail interaction model
+   - Clicking a track row selects that track and opens the individual track view without auto-play.
+   - Clicking a track play button starts/pauses playback for that specific track.
+2. Individual track view semantics
+   - The individual view shows the selected track detail.
+   - Play/pause actions target the selected track.
+   - If the selected track was playing and auto-advances at end-of-track, the view follows to the new playing track.
+3. Seeking model
+   - Scrubber timeline is the primary seek control in individual view (click + drag).
+   - ±10 second controls are not present in individual view UI.
+4. Global playback cues
+   - A mini now-playing chip appears outside list view while playback is active.
+   - Clicking the mini now-playing chip jumps the detail view to the actively playing track.
+5. Artwork presentation
+   - Track artwork is shown in both list rows and individual view with fallback rendering when missing.
 
 ### Media Profile (Phase 1 Default)
 

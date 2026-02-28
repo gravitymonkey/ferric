@@ -9,11 +9,12 @@
 
 ## Demo Flow
 
-1. In List view, click Play on first track.
-2. Switch to Now Playing.
-3. Pause, seek with +/-10s, and press Next.
-4. Toggle Shuffle and Repeat modes.
-5. Switch back to List view and confirm playback state remains consistent.
+1. In List view, click the first track row (not the play icon) to open its individual track view.
+2. Press Play from the individual view and confirm playback starts.
+3. Use the scrubber timeline (click or drag) to seek within the track.
+4. Press Next and verify the individual view updates to the next playing track.
+5. Return to List view and use Shuffle/Repeat controls in the Tracks header.
+6. While a different track is selected in individual view, verify the mini now-playing chip appears and can jump to the active playing track.
 
 ## Quick Regression Commands
 

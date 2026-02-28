@@ -19,6 +19,9 @@
    - Smoke/regression suite exists but is still POC-depth.
 5. Session persistence is minimal
    - Shuffle/repeat/position are runtime-only and not persisted across reloads.
+6. Selected-track detail vs active playback are distinct states
+   - UI allows viewing a selected track that is different from the currently playing track.
+   - This distinction must be preserved through backend integration.
 
 ## Phase 2 Migration Notes
 
@@ -35,6 +38,9 @@
 4. Phase 2 parity gates
    - Existing Phase 1 regressions (golden flow, queue, repeat, view continuity, browser smoke) must still pass.
    - Add backend API handler tests before wiring frontend to backend in default path.
+5. Preserve selected-track semantics
+   - Individual track view behavior is selection-driven; playback state is related but not identical.
+   - Backend session/state APIs must support both active playback state and current detail selection context.
 
 ## Phase 1.5 Improvement Focus (Pre-Phase-2)
 
