@@ -30,14 +30,27 @@ def run_flow(page) -> None:
 
   page.locator("#show-now-playing").click()
   page.locator("#np-title").filter(has_text="Scars").wait_for(timeout=10000)
-  page.locator("#play-pause").filter(has_text="Pause").wait_for(timeout=10000)
+  page.locator("#play-pause[data-state='playing']").wait_for(timeout=10000)
+
+  # While track 1 is playing, select track 2 from list and ensure view switches back
+  # to now-playing with the newly selected track.
+  page.locator("#show-list").click()
+  page.locator("#track-list li").nth(1).locator("button").click()
+  page.locator("#np-title").filter(has_text="Neon Harbor").wait_for(timeout=10000)
+  page.locator("#play-pause[data-state='playing']").wait_for(timeout=10000)
 
   page.locator("#play-pause").click()
-  page.locator("#play-pause").filter(has_text="Play").wait_for(timeout=5000)
+  page.locator("#play-pause[data-state='paused']").wait_for(timeout=5000)
 
-  page.locator("#fwd-10").click()
+  page.locator("#np-scrubber").evaluate(
+    """el => {
+      el.value = "30";
+      el.dispatchEvent(new Event("input", { bubbles: true }));
+      el.dispatchEvent(new Event("change", { bubbles: true }));
+    }"""
+  )
   page.locator("#next").click()
-  page.locator("#np-title").filter(has_text="Neon Harbor").wait_for(timeout=10000)
+  page.locator("#np-title").filter(has_text="Static Bloom").wait_for(timeout=10000)
 
 
 def main() -> int:

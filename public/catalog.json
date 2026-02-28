@@ -11,7 +11,7 @@
       "artwork": {
         "square_512": "/images/track_001_512.jpg"
       },
-      "duration_sec": 214,
+      "duration_sec": 136,
       "stream": {
         "protocol": "hls",
         "url": "/generated/hls/track_001/playlist.m3u8",
@@ -25,7 +25,7 @@
       "artwork": {
         "square_512": "/images/track_002_512.jpg"
       },
-      "duration_sec": 189,
+      "duration_sec": 117,
       "stream": {
         "protocol": "hls",
         "url": "/generated/hls/track_002/playlist.m3u8",
@@ -39,7 +39,7 @@
       "artwork": {
         "square_512": "/images/track_003_512.jpg"
       },
-      "duration_sec": 202,
+      "duration_sec": 99,
       "stream": {
         "protocol": "hls",
         "url": "/generated/hls/track_003/playlist.m3u8",
@@ -53,7 +53,7 @@
       "artwork": {
         "square_512": "/images/track_004_512.jpg"
       },
-      "duration_sec": 241,
+      "duration_sec": 180,
       "stream": {
         "protocol": "hls",
         "url": "/generated/hls/track_004/playlist.m3u8",
@@ -67,7 +67,7 @@
       "artwork": {
         "square_512": "/images/track_005_512.jpg"
       },
-      "duration_sec": 176,
+      "duration_sec": 108,
       "stream": {
         "protocol": "hls",
         "url": "/generated/hls/track_005/playlist.m3u8",
@@ -81,7 +81,7 @@
       "artwork": {
         "square_512": "/images/track_006_512.jpg"
       },
-      "duration_sec": 223,
+      "duration_sec": 105,
       "stream": {
         "protocol": "hls",
         "url": "/generated/hls/track_006/playlist.m3u8",
@@ -95,7 +95,7 @@
       "artwork": {
         "square_512": "/images/track_007_512.jpg"
       },
-      "duration_sec": 198,
+      "duration_sec": 43,
       "stream": {
         "protocol": "hls",
         "url": "/generated/hls/track_007/playlist.m3u8",
@@ -109,7 +109,7 @@
       "artwork": {
         "square_512": "/images/track_008_512.jpg"
       },
-      "duration_sec": 207,
+      "duration_sec": 66,
       "stream": {
         "protocol": "hls",
         "url": "/generated/hls/track_008/playlist.m3u8",
@@ -123,7 +123,7 @@
       "artwork": {
         "square_512": "/images/track_009_512.jpg"
       },
-      "duration_sec": 232,
+      "duration_sec": 88,
       "stream": {
         "protocol": "hls",
         "url": "/generated/hls/track_009/playlist.m3u8",
@@ -137,7 +137,7 @@
       "artwork": {
         "square_512": "/images/track_010_512.jpg"
       },
-      "duration_sec": 193,
+      "duration_sec": 37,
       "stream": {
         "protocol": "hls",
         "url": "/generated/hls/track_010/playlist.m3u8",

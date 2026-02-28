@@ -47,6 +47,8 @@
 
 ### Priority Improvement Tracks
 
+- [x] Replace app title text with Ferric logo header (`docs/ferric_invert.png`, 250px width)
+- [x] Introduce Tailwind-based UI styling and stateful navigation buttons (List/Now Playing)
 - [ ] Improve playback error handling and retry UX in live UI
 - [ ] Improve explicit loading/error/empty state rendering implementation parity with specs
 - [ ] Add deterministic timing/mocking strategy for browser smoke and UI flow tests
@@ -155,3 +157,6 @@ Keep tests intentionally lightweight and fast.
 - 2026-02-28: Added automated cross-browser smoke test (`tests/browser-smoke.py`) covering Chromium/Firefox/WebKit and validated pass locally with HLS-to-MP3 fallback for non-native-HLS browsers.
 - 2026-02-28: Documented end-of-Phase-1 constraints and Phase 2 migration notes in `docs/phase1-constraints-and-phase2-migration.md`; added explicit Phase 1.5 re-plan section in TODO to gate Phase 2 start.
 - 2026-02-28: Reorganized media paths: raw audio moved to `assets/raw-audio/` and generated HLS output moved to `public/generated/hls/`; updated catalog URLs, build script defaults, tests, and ignore rules accordingly.
+- 2026-02-28: Updated web UI presentation for Phase 1.5: replaced text title with Ferric logo (`docs/ferric_invert.png`, width 250), migrated styling to Tailwind CDN utilities, and improved nav/control button state visuals.
+- 2026-02-28: Replaced top nav labels with Heroicons (`list-bullet`, `musical-note`) and replaced in-body Play text buttons with Heroicon play glyphs; updated browser smoke assertions to use play/pause state attributes.
+- 2026-02-28: Updated list interaction UX: clicking a list play button now opens Now Playing for that track, and the active playing track’s list button switches to a stop icon that pauses playback when clicked.

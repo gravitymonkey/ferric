@@ -1,6 +1,6 @@
 # Ferric POC
 
-<img src="./docs/ferric.png" alt="Ferric" width="400" />
+<img src="./docs/ferric_invert.png" alt="Ferric" width="200" />
 
 ## Getting Started
 

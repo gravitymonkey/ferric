@@ -4,47 +4,184 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Ferric POC</title>
-    <link rel="stylesheet" href="/public/app.css" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Silkscreen:wght@400;700&display=swap"
+      rel="stylesheet"
+    />
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+      .font-silkscreen {
+        font-family: "Silkscreen", monospace;
+      }
+      .silkscreen-8 {
+        font-family: "Silkscreen", monospace;
+        font-size: 8px !important;
+        line-height: 1.2;
+      }
+      #mini-now-playing,
+      #mini-now-playing * {
+        font-size: 8px !important;
+        line-height: 1.2;
+        font-weight: 400 !important;
+      }
+      @keyframes trackDetailShift {
+        0% {
+          opacity: 0.4;
+          transform: translateY(6px);
+        }
+        100% {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+      .track-detail-shift {
+        animation: trackDetailShift 260ms ease-out;
+      }
+      #np-scrubber::-webkit-slider-runnable-track {
+        height: 4px;
+        border-radius: 9999px;
+        background: rgb(51 65 85);
+      }
+      #np-scrubber::-webkit-slider-thumb {
+        -webkit-appearance: none;
+        width: 8px;
+        height: 8px;
+        border-radius: 9999px;
+        background: rgb(34 211 238);
+        border: 1px solid rgb(8 145 178);
+        margin-top: -2px;
+      }
+      #np-scrubber::-moz-range-track {
+        height: 4px;
+        border-radius: 9999px;
+        background: rgb(51 65 85);
+      }
+      #np-scrubber::-moz-range-thumb {
+        width: 8px;
+        height: 8px;
+        border-radius: 9999px;
+        background: rgb(34 211 238);
+        border: 1px solid rgb(8 145 178);
+      }
+    </style>
   </head>
-  <body>
-    <main class="app">
-      <header class="app-header">
-        <h1>Ferric POC</h1>
-        <nav class="view-nav">
-          <button id="show-list" class="active">List</button>
-          <button id="show-now-playing">Now Playing</button>
+  <body class="min-h-screen bg-gradient-to-b from-slate-700 via-slate-900 to-slate-950 text-slate-100">
+    <main class="mx-auto max-w-4xl px-4 py-3 md:px-8 md:py-5">
+      <header class="mb-4 flex items-center justify-between gap-2 border-b border-slate-800 pb-4 md:mb-5 md:gap-4 md:pb-5">
+        <img src="/docs/ferric_invert.png" alt="Ferric" width="125" class="h-auto w-20 shrink-0 sm:w-24 md:w-[125px]" />
+        <nav class="inline-flex shrink-0 rounded-xl bg-slate-900 p-1 ring-1 ring-slate-700">
+          <button
+            id="show-list"
+            aria-label="List view"
+            class="rounded-lg px-4 py-2 text-sm font-semibold text-slate-300 transition hover:text-white"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="h-5 w-5">
+              <path
+                fill-rule="evenodd"
+                d="M2.25 6a.75.75 0 0 1 .75-.75h.008a.75.75 0 0 1 0 1.5H3A.75.75 0 0 1 2.25 6ZM2.25 12a.75.75 0 0 1 .75-.75h.008a.75.75 0 0 1 0 1.5H3a.75.75 0 0 1-.75-.75ZM3 17.25a.75.75 0 0 0 0 1.5h.008a.75.75 0 0 0 0-1.5H3ZM7.5 5.25A.75.75 0 0 0 7.5 6.75h13.5a.75.75 0 0 0 0-1.5H7.5ZM6.75 12a.75.75 0 0 1 .75-.75H21a.75.75 0 0 1 0 1.5H7.5a.75.75 0 0 1-.75-.75ZM7.5 17.25a.75.75 0 0 0 0 1.5h13.5a.75.75 0 0 0 0-1.5H7.5Z"
+                clip-rule="evenodd"
+              />
+            </svg>
+          </button>
+          <button
+            id="show-now-playing"
+            aria-label="Now playing view"
+            class="rounded-lg px-4 py-2 text-sm font-semibold text-slate-300 transition hover:text-white"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="h-5 w-5">
+              <path
+                fill-rule="evenodd"
+                d="M11.26 3.75A.75.75 0 0 1 12 3h6.75a.75.75 0 0 1 .75.75v10.253a3.375 3.375 0 1 1-1.5-2.813V7.5h-6v9.753a3.375 3.375 0 1 1-1.5-2.813V3.75a.75.75 0 0 1 .76-.75Z"
+                clip-rule="evenodd"
+              />
+            </svg>
+          </button>
         </nav>
       </header>
 
-      <section id="status" class="status">Loading catalog...</section>
-
-      <section id="list-view" class="panel">
-        <h2>Tracks</h2>
-        <ul id="track-list" class="track-list"></ul>
+      <section
+        id="status"
+        class="mb-4 rounded-lg border border-slate-800 bg-slate-900/70 px-3 py-2 text-sm text-slate-300"
+      >
+        Loading catalog...
       </section>
 
-      <section id="now-playing-view" class="panel hidden">
-        <h2>Now Playing</h2>
-        <div id="now-playing-empty" class="placeholder">Select a track from the list.</div>
-        <div id="now-playing-content" class="hidden">
-          <p id="np-title"></p>
-          <p id="np-artist"></p>
-          <p id="np-position"></p>
-          <div class="controls">
-            <button id="previous">Previous</button>
-            <button id="play-pause">Play</button>
-            <button id="next">Next</button>
-          </div>
-          <div class="controls">
-            <button id="back-10">-10s</button>
-            <button id="fwd-10">+10s</button>
-          </div>
-          <div class="controls">
+      <section id="list-view" class="rounded-2xl border border-slate-800 bg-slate-900/60 p-4 md:p-6">
+        <div class="mb-4 flex items-center justify-between gap-3">
+          <h2 class="text-lg font-semibold tracking-wide text-slate-200">Tracks</h2>
+          <div class="flex flex-wrap items-center justify-end gap-2">
             <button id="shuffle">Shuffle: Off</button>
             <button id="repeat">Repeat: Off</button>
           </div>
         </div>
+        <ul id="track-list" class="space-y-2"></ul>
       </section>
+
+      <section id="now-playing-view" class="hidden rounded-2xl border border-slate-800 bg-slate-900/60 p-4 md:p-6">
+        <div id="now-playing-empty" class="rounded-lg border border-dashed border-slate-700 px-4 py-8 text-slate-400">
+          Select a track from the list.
+        </div>
+        <div id="now-playing-content" class="hidden">
+          <div id="np-detail-block" class="mb-4 flex items-start gap-4">
+            <img
+              id="np-artwork"
+              src=""
+              alt=""
+              class="h-20 w-20 rounded-lg border border-slate-700 object-cover"
+            />
+            <div class="min-w-0 space-y-1">
+              <p id="np-title" class="truncate text-xl font-semibold"></p>
+              <p id="np-artist" class="truncate text-slate-300"></p>
+            </div>
+          </div>
+          <div class="w-full max-w-[420px]">
+            <div class="mb-3">
+            <input
+              id="np-scrubber"
+              type="range"
+              min="0"
+              max="100"
+              value="0"
+              class="h-1 w-full cursor-pointer appearance-none rounded-lg bg-slate-700 accent-cyan-400 disabled:cursor-not-allowed disabled:opacity-40"
+              aria-label="Track timeline scrubber"
+            />
+            <div class="mt-1 flex items-center justify-between text-[10px] text-slate-400">
+              <span id="np-time-current">0:00</span>
+              <span id="np-time-total">0:00</span>
+            </div>
+            </div>
+            <div class="mb-2 flex w-full flex-nowrap items-center justify-between gap-2 pb-1">
+            <button id="previous" aria-label="Previous track">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="h-5 w-7">
+                <path d="M9 19.5a.75.75 0 0 1-.75-.75V5.25a.75.75 0 0 1 1.5 0v13.5A.75.75 0 0 1 9 19.5Z" />
+                <path d="M18 6.108c0-1.17-1.273-1.89-2.273-1.285L8.364 9.715a1.5 1.5 0 0 0 0 2.57l7.363 4.892C16.727 17.782 18 17.062 18 15.892V6.108Z" />
+              </svg>
+            </button>
+            <button id="play-pause" aria-label="Play or pause track"></button>
+            <button id="next" aria-label="Next track">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="h-5 w-7">
+                <path d="M15 4.5a.75.75 0 0 1 .75.75v13.5a.75.75 0 0 1-1.5 0V5.25A.75.75 0 0 1 15 4.5Z" />
+                <path d="M6 6.108c0-1.17 1.273-1.89 2.273-1.285l7.363 4.892a1.5 1.5 0 0 1 0 2.57l-7.363 4.892C7.273 17.782 6 17.062 6 15.892V6.108Z" />
+              </svg>
+            </button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <button
+        id="mini-now-playing"
+        class="fixed bottom-4 left-1/2 z-30 hidden w-[min(92vw,560px)] -translate-x-1/2 items-center justify-between rounded-xl border border-cyan-400/60 bg-cyan-500/15 px-4 py-3 text-left shadow-lg shadow-cyan-900/40 backdrop-blur-sm transition hover:bg-cyan-500/20 font-silkscreen"
+        aria-label="Jump to now playing track"
+      >
+        <span class="text-xs font-semibold uppercase tracking-wide text-cyan-200">Now Playing</span>
+        <span class="ml-3 flex min-w-0 items-center justify-end gap-4">
+          <span id="mini-now-playing-main" class="truncate text-sm text-cyan-100"></span>
+          <span id="mini-now-playing-time" class="shrink-0 text-sm font-semibold text-cyan-100"></span>
+        </span>
+      </button>
     </main>
 
     <script type="module" src="/public/app.mjs"></script>
