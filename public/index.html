@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Ferric POC</title>
+    <link rel="stylesheet" href="/public/app.css" />
+  </head>
+  <body>
+    <main class="app">
+      <header class="app-header">
+        <h1>Ferric POC</h1>
+        <nav class="view-nav">
+          <button id="show-list" class="active">List</button>
+          <button id="show-now-playing">Now Playing</button>
+        </nav>
+      </header>
+
+      <section id="status" class="status">Loading catalog...</section>
+
+      <section id="list-view" class="panel">
+        <h2>Tracks</h2>
+        <ul id="track-list" class="track-list"></ul>
+      </section>
+
+      <section id="now-playing-view" class="panel hidden">
+        <h2>Now Playing</h2>
+        <div id="now-playing-empty" class="placeholder">Select a track from the list.</div>
+        <div id="now-playing-content" class="hidden">
+          <p id="np-title"></p>
+          <p id="np-artist"></p>
+          <p id="np-position"></p>
+          <div class="controls">
+            <button id="previous">Previous</button>
+            <button id="play-pause">Play</button>
+            <button id="next">Next</button>
+          </div>
+          <div class="controls">
+            <button id="back-10">-10s</button>
+            <button id="fwd-10">+10s</button>
+          </div>
+          <div class="controls">
+            <button id="shuffle">Shuffle: Off</button>
+            <button id="repeat">Repeat: Off</button>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <script type="module" src="/public/app.mjs"></script>
+  </body>
+</html>

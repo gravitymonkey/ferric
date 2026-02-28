@@ -1,0 +1,148 @@
+{
+  "schema_version": "1.0",
+  "app": {
+    "title": "Ferric POC"
+  },
+  "tracks": [
+    {
+      "id": "track_001",
+      "title": "Scars",
+      "artist": "Example Artist",
+      "artwork": {
+        "square_512": "/images/track_001_512.jpg"
+      },
+      "duration_sec": 214,
+      "stream": {
+        "protocol": "hls",
+        "url": "/generated/hls/track_001/playlist.m3u8",
+        "fallback_url": "/assets/raw-audio/MagneticHands.mp3"
+      }
+    },
+    {
+      "id": "track_002",
+      "title": "Neon Harbor",
+      "artist": "Northline",
+      "artwork": {
+        "square_512": "/images/track_002_512.jpg"
+      },
+      "duration_sec": 189,
+      "stream": {
+        "protocol": "hls",
+        "url": "/generated/hls/track_002/playlist.m3u8",
+        "fallback_url": "/assets/raw-audio/TheFormsofTheConscious.mp3"
+      }
+    },
+    {
+      "id": "track_003",
+      "title": "Static Bloom",
+      "artist": "Signal Fields",
+      "artwork": {
+        "square_512": "/images/track_003_512.jpg"
+      },
+      "duration_sec": 202,
+      "stream": {
+        "protocol": "hls",
+        "url": "/generated/hls/track_003/playlist.m3u8",
+        "fallback_url": "/assets/raw-audio/TheHouseofThisLight.mp3"
+      }
+    },
+    {
+      "id": "track_004",
+      "title": "Afterlight",
+      "artist": "Vera Cole",
+      "artwork": {
+        "square_512": "/images/track_004_512.jpg"
+      },
+      "duration_sec": 241,
+      "stream": {
+        "protocol": "hls",
+        "url": "/generated/hls/track_004/playlist.m3u8",
+        "fallback_url": "/assets/raw-audio/TheOtherHands.mp3"
+      }
+    },
+    {
+      "id": "track_005",
+      "title": "Granite Sky",
+      "artist": "Black Ferry",
+      "artwork": {
+        "square_512": "/images/track_005_512.jpg"
+      },
+      "duration_sec": 176,
+      "stream": {
+        "protocol": "hls",
+        "url": "/generated/hls/track_005/playlist.m3u8",
+        "fallback_url": "/assets/raw-audio/TheShoreofTheStars.mp3"
+      }
+    },
+    {
+      "id": "track_006",
+      "title": "Parallel Hearts",
+      "artist": "Ari Vale",
+      "artwork": {
+        "square_512": "/images/track_006_512.jpg"
+      },
+      "duration_sec": 223,
+      "stream": {
+        "protocol": "hls",
+        "url": "/generated/hls/track_006/playlist.m3u8",
+        "fallback_url": "/assets/raw-audio/WithFaintNothing.mp3"
+      }
+    },
+    {
+      "id": "track_007",
+      "title": "Paper Satellites",
+      "artist": "The Hollow Keys",
+      "artwork": {
+        "square_512": "/images/track_007_512.jpg"
+      },
+      "duration_sec": 198,
+      "stream": {
+        "protocol": "hls",
+        "url": "/generated/hls/track_007/playlist.m3u8",
+        "fallback_url": "/assets/raw-audio/i.mp3"
+      }
+    },
+    {
+      "id": "track_008",
+      "title": "Blue Circuit",
+      "artist": "Low Season",
+      "artwork": {
+        "square_512": "/images/track_008_512.jpg"
+      },
+      "duration_sec": 207,
+      "stream": {
+        "protocol": "hls",
+        "url": "/generated/hls/track_008/playlist.m3u8",
+        "fallback_url": "/assets/raw-audio/ii.mp3"
+      }
+    },
+    {
+      "id": "track_009",
+      "title": "Mile Zero",
+      "artist": "Kite Theory",
+      "artwork": {
+        "square_512": "/images/track_009_512.jpg"
+      },
+      "duration_sec": 232,
+      "stream": {
+        "protocol": "hls",
+        "url": "/generated/hls/track_009/playlist.m3u8",
+        "fallback_url": "/assets/raw-audio/iii.mp3"
+      }
+    },
+    {
+      "id": "track_010",
+      "title": "Tidal Glass",
+      "artist": "Silver Frame",
+      "artwork": {
+        "square_512": "/images/track_010_512.jpg"
+      },
+      "duration_sec": 193,
+      "stream": {
+        "protocol": "hls",
+        "url": "/generated/hls/track_010/playlist.m3u8",
+        "fallback_url": "/assets/raw-audio/iv.mp3"
+      }
+    }
+  ]
+}

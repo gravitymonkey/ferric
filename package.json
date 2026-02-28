@@ -1,0 +1,20 @@
+{
+  "name": "ferric",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "build:hls": "./scripts/build_hls_from_mp3s.sh",
+    "dev": "node scripts/dev-server.mjs",
+    "test:api-seams": "node tests/api-seams.test.mjs",
+    "test:browsers": "python3 tests/browser-smoke.py",
+    "test:catalog": "node tests/catalog-validator.test.mjs",
+    "test:golden-flow": "node tests/golden-flow-regression.test.mjs",
+    "test:hls-assets": "node tests/hls-assets-naming.test.mjs",
+    "test:catalog-media": "node tests/catalog-media-resolution.test.mjs",
+    "test:media-engine": "node tests/media-engine-contract.test.mjs",
+    "test:queue": "node tests/queue-manager.test.mjs",
+    "test:playback-play-pause": "node tests/playback-controller-play-pause.test.mjs",
+    "test:view-continuity": "node tests/view-transition-continuity.test.mjs"
+  }
+}
