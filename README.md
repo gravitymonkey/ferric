@@ -4,7 +4,7 @@
 
 ## Getting Started
 
-1. From repo root, start both services:
+1. From repo root, start API + Web services (additional players coming soonish):
 
 ```bash
 make run
@@ -13,6 +13,11 @@ make run
 2. Open:
 
 `http://localhost:8080/public/index.html`
+
+
+<img src="./docs/list.png" width=200 alt="list view">
+
+<img src="./docs/track.png" width=200 alt="track view">
 
 ## Core Docs
 
