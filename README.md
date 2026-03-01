@@ -31,9 +31,13 @@ Notes:
 - Tail Logs page: `http://127.0.0.1:8000/admin/logs`.
 - Log files are written to `backend/logs/backend.log` and `backend/logs/frontend.log`.
 
-<img src="./docs/list.png" width=200 alt="list view">
+<A HREF="./docs/list.png"><img src="./docs/list.png" width=200 alt="list view"></A>
 
-<img src="./docs/track.png" width=200 alt="track view">
+<A HREF="./docs/track.png"><img src="./docs/track.png" width=200 alt="track view"></A>
+
+<A HREF="./docs/admin_list.png"><img src="./docs/admin_list.png" width=400 alt="admin list view"></A>
+
+<A HREF="./docs/admin_track.png"><img src="./docs/admin_track.png" width=400 alt="admin track view"></A>
 
 ## Core Docs
 
