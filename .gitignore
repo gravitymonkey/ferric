@@ -8,3 +8,4 @@ assets/raw-audio/managed/
 public/generated/hls/
 public/images/managed/
 backend/logs/
+.env
