@@ -1,4 +1,4 @@
-# Ferric POC
+# Ferric: A Simple Streaming Music Service
 
 <img src="./docs/ferric_invert.png" alt="Ferric" width="200" />
 
