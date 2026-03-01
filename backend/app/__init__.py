@@ -1,0 +1,2 @@
+"""Ferric API application package."""
+

@@ -3,15 +3,20 @@ import subprocess
 import sys
 import time
 import mimetypes
+import os
+import socket
 from urllib.request import urlopen
 
 from playwright.sync_api import sync_playwright
 
 
-URL = "http://localhost:8080/public/index.html"
+def find_free_port() -> int:
+  with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+    sock.bind(("127.0.0.1", 0))
+    return int(sock.getsockname()[1])
 
 
-def wait_for_server(url: str, timeout_sec: int = 15) -> None:
+def wait_for_server(url: str, timeout_sec: int = 20) -> None:
   start = time.time()
   while time.time() - start < timeout_sec:
     try:
@@ -23,8 +28,8 @@ def wait_for_server(url: str, timeout_sec: int = 15) -> None:
   raise RuntimeError("dev server did not become ready in time")
 
 
-def run_flow(page) -> None:
-  page.goto(URL, wait_until="domcontentloaded")
+def run_flow(page, url: str) -> None:
+  page.goto(url, wait_until="domcontentloaded")
   page.locator("#status").filter(has_text="Loaded").wait_for(timeout=10000)
   page.locator("#track-list li button").first.click()
 
@@ -58,14 +63,30 @@ def main() -> int:
   mimetypes.add_type("application/vnd.apple.mpegurl", ".m3u8")
   mimetypes.add_type("video/mp2t", ".ts")
 
-  server = subprocess.Popen(
-    ["python3", "-m", "http.server", "8080"],
+  backend_port = find_free_port()
+  frontend_port = find_free_port()
+  health_url = f"http://127.0.0.1:{backend_port}/api/v1/health"
+  url = f"http://127.0.0.1:{frontend_port}/public/index.html"
+
+  backend = subprocess.Popen(
+    ["python3", "-m", "uvicorn", "backend.app.main:app", "--host", "127.0.0.1", "--port", str(backend_port)],
+    stdout=subprocess.DEVNULL,
+    stderr=subprocess.DEVNULL,
+  )
+  frontend = subprocess.Popen(
+    ["python3", "scripts/dev_server.py"],
+    env={
+      **os.environ,
+      "PORT": str(frontend_port),
+      "BACKEND_ORIGIN": f"http://127.0.0.1:{backend_port}",
+    },
     stdout=subprocess.DEVNULL,
     stderr=subprocess.DEVNULL,
   )
 
   try:
-    wait_for_server(URL)
+    wait_for_server(health_url)
+    wait_for_server(url)
     failures = []
     with sync_playwright() as p:
       browsers = [
@@ -76,9 +97,15 @@ def main() -> int:
 
       for name, browser_type in browsers:
         try:
-          browser = browser_type.launch(headless=True)
+          launch_kwargs = {"headless": True}
+          if name == "chromium":
+            launch_kwargs["args"] = ["--autoplay-policy=no-user-gesture-required"]
+          elif name == "firefox":
+            launch_kwargs["firefox_user_prefs"] = {"media.autoplay.default": 0}
+
+          browser = browser_type.launch(**launch_kwargs)
           page = browser.new_page()
-          run_flow(page)
+          run_flow(page, url)
           browser.close()
           print(f"PASS: {name} smoke flow")
         except Exception as exc:
@@ -94,11 +121,14 @@ def main() -> int:
     print("PASS: browser smoke across chromium/firefox/webkit")
     return 0
   finally:
-    server.terminate()
+    frontend.terminate()
+    backend.terminate()
     try:
-      server.wait(timeout=3)
+      frontend.wait(timeout=3)
+      backend.wait(timeout=3)
     except Exception:
-      server.kill()
+      frontend.kill()
+      backend.kill()
 
 
 if __name__ == "__main__":

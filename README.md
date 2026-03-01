@@ -4,10 +4,10 @@
 
 ## Getting Started
 
-1. From repo root, start the local server:
+1. From repo root, start both services:
 
 ```bash
-npm run dev
+make run
 ```
 
 2. Open:
@@ -19,6 +19,7 @@ npm run dev
 - Product requirements: [`docs/PRD.md`](docs/PRD.md)
 - Execution checklist and decisions: [`docs/TODO.md`](docs/TODO.md)
 - Demo flow: [`docs/demo-runbook.md`](docs/demo-runbook.md)
+- Local startup/debug: [`docs/local-debug-runbook.md`](docs/local-debug-runbook.md)
 
 ## Development Details
 

@@ -1,7 +1,7 @@
 import { PlaybackController } from "../src/playback/playback-controller.mjs";
 import { BrowserMediaEngine } from "../src/playback/media-engine.mjs";
-import { StaticStreamResolver } from "../src/playback/stream-resolver.mjs";
-import { StaticCatalogSource } from "../src/data/catalog-source.mjs";
+import { ApiStreamResolver } from "../src/playback/stream-resolver.mjs";
+import { ApiCatalogSource } from "../src/data/catalog-source.mjs";
 import { ViewShell } from "../src/app/view-shell.mjs";
 
 const ICONS = {
@@ -23,10 +23,10 @@ const ICONS = {
 };
 
 function asBrowserTrack(track) {
-  const normalizedUrl = track.stream.url.startsWith("/generated/hls/") ? `/public${track.stream.url}` : track.stream.url;
-  const normalizedFallback = track.stream.fallback_url?.startsWith("/assets/raw-audio/")
-    ? track.stream.fallback_url
-    : track.stream.fallback_url ?? null;
+  const rawStreamUrl = track.stream?.url ?? `/generated/hls/${track.id}/playlist.m3u8`;
+  const rawFallbackUrl = track.stream?.fallback_url ?? null;
+  const normalizedUrl = rawStreamUrl.startsWith("/generated/hls/") ? `/public${rawStreamUrl}` : rawStreamUrl;
+  const normalizedFallback = rawFallbackUrl?.startsWith("/assets/raw-audio/") ? rawFallbackUrl : rawFallbackUrl ?? null;
   const normalizedArtwork = track.artwork?.square_512?.startsWith("/")
     ? track.artwork.square_512
     : track.artwork?.square_512 ?? null;
@@ -80,8 +80,23 @@ async function main() {
   let statusHideTimer = null;
 
   const mediaEngine = new BrowserMediaEngine();
-  const streamResolver = new StaticStreamResolver();
-  const catalogSource = new StaticCatalogSource();
+  const apiStreamResolver = new ApiStreamResolver();
+  const streamResolver = {
+    async resolve(track, client) {
+      const resolved = await apiStreamResolver.resolve(track, client);
+      const streamUrl = resolved?.stream?.url ?? "";
+      const fallbackUrl = resolved?.stream?.fallback_url ?? null;
+      return {
+        ...resolved,
+        stream: {
+          ...resolved.stream,
+          url: streamUrl.startsWith("/generated/hls/") ? `/public${streamUrl}` : streamUrl,
+          fallback_url: fallbackUrl?.startsWith("/assets/raw-audio/") ? fallbackUrl : fallbackUrl
+        }
+      };
+    }
+  };
+  const catalogSource = new ApiCatalogSource();
   const controller = new PlaybackController(mediaEngine, { streamResolver });
   const shell = new ViewShell(controller);
   let tracks = [];

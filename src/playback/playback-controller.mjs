@@ -58,8 +58,8 @@ export class PlaybackController {
   }
 
   async play(track) {
-    if (!track?.id || !track?.stream?.url) {
-      throw new Error("play requires track.id and track.stream.url");
+    if (!track?.id) {
+      throw new Error("play requires track.id");
     }
 
     const isNewTrack = track.id !== this.state.currentTrackId;

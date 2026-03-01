@@ -1,9 +1,9 @@
-# Ferric Phase 1 Demo Runbook
+# Ferric Demo Runbook
 
 ## Start Demo
 
 1. From repo root:
-   - `npm run dev`
+   - `make run`
 2. Open:
    - `http://localhost:8080/public/index.html`
 
@@ -21,4 +21,5 @@
 - `npm run test:golden-flow`
 - `npm run test:view-continuity`
 - `npm run test:playback-play-pause`
+- `npm run test:phase2-integration`
 - `npm run test:browsers`

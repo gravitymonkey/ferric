@@ -14,7 +14,32 @@ Defaults:
 - Generated output: `public/generated/hls/`
 - Catalog source of track IDs: `public/catalog.json`
 
+## Run Locally
+
+Preferred:
+
+```bash
+make run
+```
+
+Manual split (if needed):
+
+```bash
+make backend
+make frontend
+```
+
+For startup troubleshooting and request-id debugging commands, see:
+
+- `docs/local-debug-runbook.md`
+
 ## Test Commands
+
+Full automated validation:
+
+```bash
+make test
+```
 
 Core playback and UI regressions:
 
@@ -22,6 +47,7 @@ Core playback and UI regressions:
 npm run test:playback-play-pause
 npm run test:view-continuity
 npm run test:golden-flow
+npm run test:phase2-integration
 npm run test:browsers
 ```
 
@@ -35,6 +61,7 @@ npm run test:media-engine
 npm run test:playback-play-pause
 npm run test:view-continuity
 npm run test:golden-flow
+npm run test:phase2-integration
 npm run test:hls-assets
 npm run test:catalog-media
 npm run test:browsers

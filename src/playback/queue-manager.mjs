@@ -50,8 +50,8 @@ export class QueueManager {
     }
 
     for (const track of tracks) {
-      if (!track?.id || !track?.stream?.url) {
-        throw new Error("each queued track requires id and stream.url");
+      if (!track?.id) {
+        throw new Error("each queued track requires id");
       }
     }
   }

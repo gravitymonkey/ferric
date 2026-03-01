@@ -29,6 +29,22 @@ import { StaticStreamResolver, ApiStreamResolver } from "../src/playback/stream-
 }
 
 {
+  const calls = [];
+  const source = new ApiCatalogSource({
+    baseUrl: "http://127.0.0.1:8001/api/v1",
+    fetchFn: async (url) => {
+      calls.push(url);
+      return {
+        ok: true,
+        json: async () => ({ tracks: [] })
+      };
+    }
+  });
+  await source.fetchCatalog({ limit: 1 });
+  assert.equal(calls[0], "http://127.0.0.1:8001/api/v1/catalog?limit=1");
+}
+
+{
   const resolver = new StaticStreamResolver();
   const result = await resolver.resolve({
     id: "track_001",

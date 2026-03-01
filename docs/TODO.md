@@ -64,31 +64,31 @@
 
 ### Backend Foundation
 
-- [ ] Scaffold Python service project
-- [ ] Add `/api/v1/health`
-- [ ] Add `/api/v1/catalog`
-- [ ] Add `/api/v1/tracks/{track_id}`
-- [ ] Add `/api/v1/playback/resolve`
-- [ ] Add session endpoints: create/update/read
+- [x] Scaffold Python service project
+- [x] Add `/api/v1/health`
+- [x] Add `/api/v1/catalog`
+- [x] Add `/api/v1/tracks/{track_id}`
+- [x] Add `/api/v1/playback/resolve`
+- [x] Add session endpoints: create/update/read
 
 ### Contract + Integration
 
-- [ ] Implement response and error schemas from PRD API sketch
-- [ ] Replace frontend static catalog load with API client
-- [ ] Replace direct media URL assumptions with `playback/resolve` call
-- [ ] Preserve Phase 1 UX and control behavior after backend integration
+- [x] Implement response and error schemas from PRD API sketch
+- [x] Replace frontend static catalog load with API client
+- [x] Replace direct media URL assumptions with `playback/resolve` call
+- [x] Preserve Phase 1 UX and control behavior after backend integration
 
 ### Observability + Reliability (POC level)
 
-- [ ] Add request logging with request IDs
-- [ ] Add basic API validation and clear 4xx errors
-- [ ] Add minimal runbook notes for local startup/debug
+- [x] Add request logging with request IDs
+- [x] Add basic API validation and clear 4xx errors
+- [x] Add minimal runbook notes for local startup/debug
 
 ### Phase 2 Exit Criteria
 
-- [ ] Frontend fully functional against Python backend
-- [ ] Phase 1 behavior parity verified
-- [ ] Integration demo proves direction for post-POC build
+- [x] Frontend fully functional against Python backend
+- [x] Phase 1 behavior parity verified
+- [x] Integration demo proves direction for post-POC build
 
 ---
 
@@ -103,17 +103,20 @@ Keep tests intentionally lightweight and fast.
 - [x] Playback state reducer/controller transitions (play, pause, seek, skip)
 - [x] Catalog parser/validator for required fields
 - [ ] Phase 2 API handlers:
-  - [ ] `GET /health` returns 200 + expected schema
-  - [ ] `GET /catalog` returns valid shape
-  - [ ] `POST /playback/resolve` returns stream info for valid track
-  - [ ] Missing track/session returns expected 404 error schema
+  - [x] `GET /health` returns 200 + expected schema
+  - [x] `GET /catalog` returns valid shape
+  - [x] `GET /tracks/{track_id}` returns 200 + expected schema
+  - [x] `POST /playback/resolve` returns stream info for valid track
+  - [x] Session create/update/read endpoints return expected schema
+  - [x] Missing track returns expected 404 error schema
+  - [x] Missing session returns expected 404 error schema
 
 ### Simple Regression Tests
 
 - [x] Golden flow: load app -> start track -> pause -> seek -> next track
 - [x] Queue regression: shuffle on/off does not lose current track
 - [x] Repeat regression: repeat one does not advance queue at end
-- [ ] Phase 2 integration regression: same golden flow passes against backend APIs
+- [x] Phase 2 integration regression: same golden flow passes against backend APIs
 
 ### Manual Smoke Checklist (per release candidate)
 
@@ -131,6 +134,14 @@ Keep tests intentionally lightweight and fast.
 - [ ] Persist session preferences locally (shuffle/repeat)
 - [ ] Basic analytics event stubs for play/pause/skip
 - [ ] Initial auth hook plumbing for future protected streams
+
+---
+
+## Phase 3 Direction (Draft)
+
+- [ ] Move catalog/session source-of-truth from file + memory to DB-backed storage (SQLite first, then Postgres path)
+- [ ] Add admin interface for track metadata management (create/edit/publish)
+- [ ] Add admin upload flow for audio/artwork with HLS generation + catalog ingest
 
 ---
 
@@ -160,3 +171,19 @@ Keep tests intentionally lightweight and fast.
 - 2026-02-28: Updated web UI presentation for Phase 1.5: replaced text title with Ferric logo (`docs/ferric_invert.png`, width 250), migrated styling to Tailwind CDN utilities, and improved nav/control button state visuals.
 - 2026-02-28: Replaced top nav labels with Heroicons (`list-bullet`, `musical-note`) and replaced in-body Play text buttons with Heroicon play glyphs; updated browser smoke assertions to use play/pause state attributes.
 - 2026-02-28: Updated list interaction UX: clicking a list play button now opens Now Playing for that track, and the active playing track’s list button switches to a stop icon that pauses playback when clicked.
+- 2026-02-28: Scaffolded Phase 2 Python backend service under `backend/` using FastAPI app factory (`backend/app/main.py`) with initial boot test coverage (`backend/tests/test_scaffold.py`).
+- 2026-02-28: Added `/api/v1/health` endpoint with PRD-aligned schema (`status`, `service`, `time`) and test coverage in `backend/tests/test_scaffold.py`.
+- 2026-02-28: Added `/api/v1/catalog` endpoint with `limit`/`offset`/`q` support and PRD-aligned response shape (`schema_version`, `app`, `tracks`, `page`), backed by `public/catalog.json`.
+- 2026-02-28: Added `/api/v1/tracks/{track_id}` endpoint with PRD-aligned track metadata response and 404 error schema (`TRACK_NOT_FOUND`, `request_id`) plus unit tests for found/missing track cases.
+- 2026-02-28: Added `/api/v1/playback/resolve` endpoint to resolve `track_id` -> stream metadata (`protocol`, `url`, `expires_at`, `requires_auth`) with 404 `TRACK_NOT_FOUND` behavior and unit tests for success/missing track.
+- 2026-02-28: Added in-memory session API endpoints (`POST /sessions`, `PATCH /sessions/{session_id}`, `GET /sessions/{session_id}`) with PRD-aligned payload fields and `SESSION_NOT_FOUND` 404 schema coverage.
+- 2026-02-28: Added typed API schema models in `backend/app/schemas.py`, bound FastAPI request/response models for existing Phase 2 routes, and standardized invalid input handling to PRD-style `BAD_REQUEST` 4xx payloads.
+- 2026-02-28: Switched frontend catalog loading from static file source to `GET /api/v1/catalog` via `ApiCatalogSource`, and added dev-server `/api/*` proxy support (`BACKEND_ORIGIN`, default `http://127.0.0.1:8000`) to keep local UI flow runnable.
+- 2026-02-28: Switched frontend playback stream resolution to `POST /api/v1/playback/resolve` via `ApiStreamResolver`, and removed controller/queue hard-requirements for `track.stream.url` so API catalog track shapes can remain metadata-only.
+- 2026-02-28: Database direction decision for Phase 2: keep current file + in-memory approach for immediate POC progress; plan SQLite as the first persistence layer for sessions in a follow-up step.
+- 2026-02-28: Restored cross-browser playback parity after API integration by adding `fallback_url` to `/api/v1/playback/resolve` responses and browser-side stream URL normalization for static dev serving paths.
+- 2026-02-28: Added backend-integrated regression coverage (`tests/phase2-backend-golden-flow.test.mjs`) and updated browser smoke harness to run against FastAPI + dev proxy on dynamic localhost ports.
+- 2026-02-28: Added backend request logging middleware with per-request IDs (`x-request-id` header generation/propagation), structured request logs, and request-id propagation into PRD-style error payloads.
+- 2026-02-28: Added `docs/local-debug-runbook.md` with concrete startup, health/proxy checks, request-id debug commands, and common local failure triage; linked from root/dev/backend docs.
+- 2026-02-28: Phase 2 closeout verification passed across backend unit tests, frontend unit/regression suites, backend-integrated golden flow, and cross-browser smoke (Chromium/Firefox/WebKit), enabling Phase 2 exit criteria completion.
+- 2026-02-28: Added Python-based frontend dev server (`scripts/dev_server.py`) and a root `Makefile` (`make run`, `make backend`, `make frontend`, `make test`, `make smoke`) so local orchestration can run through Python services + scripted targets.

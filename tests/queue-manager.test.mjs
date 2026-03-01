@@ -4,6 +4,7 @@ import { QueueManager } from "../src/playback/queue-manager.mjs";
 const track1 = { id: "track_001", stream: { url: "/generated/hls/track_001/playlist.m3u8" } };
 const track2 = { id: "track_002", stream: { url: "/generated/hls/track_002/playlist.m3u8" } };
 const track3 = { id: "track_003", stream: { url: "/generated/hls/track_003/playlist.m3u8" } };
+const idOnlyTrack = { id: "track_004" };
 
 {
   const manager = new QueueManager();
@@ -32,7 +33,14 @@ const track3 = { id: "track_003", stream: { url: "/generated/hls/track_003/playl
 
 {
   const manager = new QueueManager();
+  const queue = manager.setQueue([idOnlyTrack], null, false);
+  assert.equal(queue[0].id, "track_004");
+}
+
+{
+  const manager = new QueueManager();
   assert.throws(() => manager.setQueue("bad"), /array of tracks/);
+  assert.throws(() => manager.setQueue([{ stream: { url: "/generated/hls/x/playlist.m3u8" } }]), /requires id/);
   manager.setQueue([track1]);
   assert.throws(() => manager.getTrackAt(2), /out of range/);
 }

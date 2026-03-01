@@ -15,6 +15,7 @@
     "test:media-engine": "node tests/media-engine-contract.test.mjs",
     "test:queue": "node tests/queue-manager.test.mjs",
     "test:playback-play-pause": "node tests/playback-controller-play-pause.test.mjs",
-    "test:view-continuity": "node tests/view-transition-continuity.test.mjs"
+    "test:view-continuity": "node tests/view-transition-continuity.test.mjs",
+    "test:phase2-integration": "node tests/phase2-backend-golden-flow.test.mjs"
   }
 }

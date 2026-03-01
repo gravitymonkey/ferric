@@ -23,6 +23,7 @@ export class ApiCatalogSource {
   }
 
   async fetchCatalog(params = {}) {
+    const useAbsolute = this.baseUrl.startsWith("http://") || this.baseUrl.startsWith("https://");
     const url = new URL(`${this.baseUrl}/catalog`, "http://local");
     for (const [key, value] of Object.entries(params)) {
       if (value !== undefined && value !== null && value !== "") {
@@ -30,7 +31,8 @@ export class ApiCatalogSource {
       }
     }
 
-    const response = await this.fetchFn(url.pathname + url.search);
+    const requestUrl = useAbsolute ? url.toString() : url.pathname + url.search;
+    const response = await this.fetchFn(requestUrl);
     if (!response.ok) {
       throw new Error(`catalog load failed: ${response.status}`);
     }

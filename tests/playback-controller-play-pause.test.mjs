@@ -23,6 +23,7 @@ function createFakeMediaEngine() {
 const track1 = { id: "track_001", stream: { url: "/generated/hls/track_001/playlist.m3u8" } };
 const track2 = { id: "track_002", stream: { url: "/generated/hls/track_002/playlist.m3u8" } };
 const track3 = { id: "track_003", stream: { url: "/generated/hls/track_003/playlist.m3u8" } };
+const idOnlyTrack = { id: "track_004" };
 
 {
   const engine = createFakeMediaEngine();
@@ -52,6 +53,27 @@ const track3 = { id: "track_003", stream: { url: "/generated/hls/track_003/playl
 
   await controller.play(track1);
   assert.deepEqual(engine.calls, [["load", "/resolved/track_001/playlist.m3u8"], ["play"]]);
+}
+
+{
+  const engine = createFakeMediaEngine();
+  const controller = new PlaybackController(engine, {
+    streamResolver: {
+      async resolve(track) {
+        return {
+          track_id: track.id,
+          stream: {
+            protocol: "hls",
+            url: `/resolved/${track.id}/playlist.m3u8`
+          }
+        };
+      }
+    }
+  });
+
+  await controller.play(idOnlyTrack);
+  assert.deepEqual(engine.calls, [["load", "/resolved/track_004/playlist.m3u8"], ["play"]]);
+  assert.equal(controller.getState().currentTrackId, "track_004");
 }
 
 {
