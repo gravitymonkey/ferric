@@ -1,20 +1,34 @@
 import contextvars
 import logging
+import os
 import time
 from datetime import UTC, datetime, timedelta
+from pathlib import Path
 from uuid import uuid4
 
-from fastapi import APIRouter, FastAPI, Query, Request
+from fastapi import APIRouter, Depends, FastAPI, Query, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
+from fastapi.staticfiles import StaticFiles
+from sqlalchemy.orm import Session
 
-from backend.app.catalog import get_catalog_page, get_track_by_id, get_track_stream_by_id
+from backend.app.admin_api import admin_v1
+from backend.app.admin_ui import admin_ui
+from backend.app.catalog_repository import (
+    get_catalog_page,
+    get_track_by_id,
+    get_track_stream_by_id,
+)
+from backend.app.db import get_db
+from backend.app.listening_repository import record_listening_event
 from backend.app.schemas import (
     CatalogResponse,
     CreateSessionRequest,
     CreateSessionResponse,
     ErrorResponse,
     HealthResponse,
+    ListenEventRequest,
+    ListenEventResponse,
     ResolvePlaybackRequest,
     ResolvePlaybackResponse,
     SessionStateResponse,
@@ -22,14 +36,32 @@ from backend.app.schemas import (
     UpdateSessionRequest,
     UpdateSessionResponse,
 )
+from backend.app.session_repository import (
+    create_playback_session,
+    get_playback_session,
+    update_playback_session,
+)
 
 
 api_v1 = APIRouter(prefix="/api/v1")
-SESSION_STORE: dict[str, dict] = {}
 REQUEST_ID_CTX: contextvars.ContextVar[str | None] = contextvars.ContextVar("request_id", default=None)
 logger = logging.getLogger("ferric.api")
 if not logger.handlers:
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
+
+
+def _ensure_file_logger() -> None:
+    default_path = str(Path(__file__).resolve().parents[2] / "backend" / "logs" / "backend.log")
+    log_path = Path(os.getenv("FERRIC_BACKEND_LOG_PATH", default_path))
+    log_path.parent.mkdir(parents=True, exist_ok=True)
+    resolved = str(log_path.resolve())
+    for handler in logger.handlers:
+        if isinstance(handler, logging.FileHandler) and handler.baseFilename == resolved:
+            return
+    file_handler = logging.FileHandler(resolved, encoding="utf-8")
+    file_handler.setLevel(logging.INFO)
+    file_handler.setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(message)s"))
+    logger.addHandler(file_handler)
 
 
 def _get_request_id() -> str:
@@ -60,6 +92,15 @@ def _not_found_session_error() -> JSONResponse:
     return _error_response(code="SESSION_NOT_FOUND", message="Session does not exist", status_code=404)
 
 
+def _request_ip(request: Request) -> str | None:
+    forwarded = request.headers.get("x-forwarded-for")
+    if forwarded:
+        return forwarded.split(",")[0].strip()
+    if request.client:
+        return request.client.host
+    return None
+
+
 @api_v1.get("/health")
 def get_health() -> HealthResponse:
     now_utc = datetime.now(UTC).isoformat().replace("+00:00", "Z")
@@ -75,8 +116,9 @@ def get_catalog(
     limit: int = Query(default=50, ge=1, le=500),
     offset: int = Query(default=0, ge=0),
     q: str | None = Query(default=None),
+    db: Session = Depends(get_db),
 ) -> CatalogResponse:
-    return get_catalog_page(limit=limit, offset=offset, q=q)
+    return get_catalog_page(db, limit=limit, offset=offset, q=q)
 
 
 @api_v1.get(
@@ -84,8 +126,8 @@ def get_catalog(
     response_model=TrackMetadata,
     responses={404: {"model": ErrorResponse}},
 )
-def get_track(track_id: str) -> TrackMetadata:
-    track = get_track_by_id(track_id)
+def get_track(track_id: str, db: Session = Depends(get_db)) -> TrackMetadata:
+    track = get_track_by_id(db, track_id)
     if track is None:
         return _not_found_track_error()
     return TrackMetadata.model_validate(track)
@@ -96,9 +138,9 @@ def get_track(track_id: str) -> TrackMetadata:
     response_model=ResolvePlaybackResponse,
     responses={404: {"model": ErrorResponse}},
 )
-def resolve_playback(payload: ResolvePlaybackRequest) -> ResolvePlaybackResponse:
+def resolve_playback(payload: ResolvePlaybackRequest, db: Session = Depends(get_db)) -> ResolvePlaybackResponse:
     track_id = payload.track_id
-    stream = get_track_stream_by_id(track_id)
+    stream = get_track_stream_by_id(db, track_id)
     if stream is None:
         return _not_found_track_error()
 
@@ -116,23 +158,10 @@ def resolve_playback(payload: ResolvePlaybackRequest) -> ResolvePlaybackResponse
 
 
 @api_v1.post("/sessions", response_model=CreateSessionResponse, status_code=201)
-def create_session(payload: CreateSessionRequest) -> CreateSessionResponse:
+def create_session(payload: CreateSessionRequest, db: Session = Depends(get_db)) -> CreateSessionResponse:
     session_id = f"session_{uuid4().hex[:12]}"
-    now_utc = datetime.now(UTC).isoformat().replace("+00:00", "Z")
-
-    session = {
-        "session_id": session_id,
-        "queue_track_ids": payload.queue_track_ids,
-        "current_track_id": payload.current_track_id,
-        "position_sec": payload.position_sec,
-        "shuffle": payload.shuffle,
-        "repeat_mode": payload.repeat_mode,
-        "created_at": now_utc,
-        "updated_at": now_utc,
-    }
-    SESSION_STORE[session_id] = session
-
-    return CreateSessionResponse(session_id=session_id, created_at=now_utc)
+    created = create_playback_session(db, session_id=session_id, payload=payload)
+    return CreateSessionResponse(session_id=created["session_id"], created_at=created["created_at"])
 
 
 @api_v1.patch(
@@ -140,26 +169,16 @@ def create_session(payload: CreateSessionRequest) -> CreateSessionResponse:
     response_model=UpdateSessionResponse,
     responses={404: {"model": ErrorResponse}},
 )
-def update_session(session_id: str, payload: UpdateSessionRequest) -> UpdateSessionResponse:
-    session = SESSION_STORE.get(session_id)
-    if session is None:
+def update_session(
+    session_id: str, payload: UpdateSessionRequest, db: Session = Depends(get_db)
+) -> UpdateSessionResponse:
+    updated = update_playback_session(db, session_id=session_id, payload=payload)
+    if updated is None:
         return _not_found_session_error()
 
-    updatable_keys = {"queue_track_ids", "current_track_id", "position_sec", "shuffle", "repeat_mode"}
-    for key in updatable_keys:
-        value = getattr(payload, key)
-        if value is not None:
-            if key == "queue_track_ids":
-                session[key] = list(value)
-            else:
-                session[key] = value
-
-    now_utc = datetime.now(UTC).isoformat().replace("+00:00", "Z")
-    session["updated_at"] = now_utc
-
     return UpdateSessionResponse(
-        session_id=session_id,
-        updated_at=now_utc,
+        session_id=updated["session_id"],
+        updated_at=updated["updated_at"],
     )
 
 
@@ -168,8 +187,8 @@ def update_session(session_id: str, payload: UpdateSessionRequest) -> UpdateSess
     response_model=SessionStateResponse,
     responses={404: {"model": ErrorResponse}},
 )
-def get_session(session_id: str) -> SessionStateResponse:
-    session = SESSION_STORE.get(session_id)
+def get_session(session_id: str, db: Session = Depends(get_db)) -> SessionStateResponse:
+    session = get_playback_session(db, session_id=session_id)
     if session is None:
         return _not_found_session_error()
 
@@ -183,7 +202,27 @@ def get_session(session_id: str) -> SessionStateResponse:
     )
 
 
+@api_v1.post("/events/listen", response_model=ListenEventResponse)
+def post_listen_event(
+    payload: ListenEventRequest,
+    request: Request,
+    db: Session = Depends(get_db),
+) -> ListenEventResponse:
+    accepted = record_listening_event(
+        db,
+        user_id=payload.user_id,
+        track_id=payload.track_id,
+        action=payload.action,
+        position_sec=payload.position_sec,
+        ip_address=_request_ip(request),
+    )
+    if not accepted:
+        return _not_found_track_error()
+    return ListenEventResponse(accepted=True)
+
+
 def create_app() -> FastAPI:
+    _ensure_file_logger()
     app = FastAPI(title="ferric-api", version="0.1.0")
 
     @app.middleware("http")
@@ -223,7 +262,12 @@ def create_app() -> FastAPI:
         return _error_response(code="BAD_REQUEST", message="Request validation failed", status_code=400)
 
     app.include_router(api_v1)
+    app.include_router(admin_v1)
+    app.include_router(admin_ui)
     return app
 
 
 app = create_app()
+
+REPO_ROOT = Path(__file__).resolve().parents[2]
+app.mount("/images", StaticFiles(directory=REPO_ROOT / "public" / "images"), name="images")

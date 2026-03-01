@@ -182,6 +182,15 @@
           <span id="mini-now-playing-time" class="shrink-0 text-sm font-semibold text-cyan-100"></span>
         </span>
       </button>
+
+      <div id="artwork-lightbox" class="fixed inset-0 z-40 hidden items-center justify-center bg-black/70 p-4 backdrop-blur-sm" aria-hidden="true">
+        <img
+          id="artwork-lightbox-image"
+          src=""
+          alt="Album cover expanded view"
+          class="max-h-[92vh] max-w-[92vw] h-auto w-auto cursor-zoom-out rounded-lg border border-slate-600 object-contain shadow-2xl shadow-black/50"
+        />
+      </div>
     </main>
 
     <script type="module" src="/public/app.mjs"></script>

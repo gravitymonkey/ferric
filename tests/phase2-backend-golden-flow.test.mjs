@@ -1,5 +1,7 @@
 import assert from "node:assert/strict";
-import { spawn } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
+import os from "node:os";
+import path from "node:path";
 import { setTimeout as delay } from "node:timers/promises";
 
 import { PlaybackController } from "../src/playback/playback-controller.mjs";
@@ -8,6 +10,8 @@ import { ApiStreamResolver } from "../src/playback/stream-resolver.mjs";
 
 const BACKEND_PORT = 8010;
 const BASE_URL = `http://127.0.0.1:${BACKEND_PORT}/api/v1`;
+const TEST_DB_PATH = path.join(os.tmpdir(), `ferric_phase2_${Date.now()}.db`);
+const DATABASE_URL = `sqlite:///${TEST_DB_PATH}`;
 
 function createFakeMediaEngine() {
   const calls = [];
@@ -44,10 +48,29 @@ async function waitForReady(url, timeoutMs = 15000) {
   throw new Error(`backend not ready at ${url}`);
 }
 
+{
+  const migration = spawnSync(
+    "python3",
+    ["-m", "alembic", "-c", "backend/alembic.ini", "upgrade", "head"],
+    { stdio: "inherit", env: { ...process.env, DATABASE_URL } }
+  );
+  if (migration.status !== 0) {
+    throw new Error("failed to run alembic upgrade for phase2 integration test");
+  }
+
+  const seed = spawnSync("python3", ["-m", "backend.app.seed_catalog"], {
+    stdio: "inherit",
+    env: { ...process.env, DATABASE_URL }
+  });
+  if (seed.status !== 0) {
+    throw new Error("failed to seed catalog for phase2 integration test");
+  }
+}
+
 const backendProc = spawn(
   "python3",
   ["-m", "uvicorn", "backend.app.main:app", "--host", "127.0.0.1", "--port", String(BACKEND_PORT)],
-  { stdio: "ignore" }
+  { stdio: "ignore", env: { ...process.env, DATABASE_URL } }
 );
 
 try {

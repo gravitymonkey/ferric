@@ -2,5 +2,9 @@
 .DS_STORE
 __pycache__/
 *.pyc
+backend/*.db
 assets/raw-audio/
+assets/raw-audio/managed/
 public/generated/hls/
+public/images/managed/
+backend/logs/

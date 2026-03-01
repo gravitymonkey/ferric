@@ -5,6 +5,7 @@ import time
 import mimetypes
 import os
 import socket
+import tempfile
 from urllib.request import urlopen
 
 from playwright.sync_api import sync_playwright
@@ -67,9 +68,31 @@ def main() -> int:
   frontend_port = find_free_port()
   health_url = f"http://127.0.0.1:{backend_port}/api/v1/health"
   url = f"http://127.0.0.1:{frontend_port}/public/index.html"
+  db_file = tempfile.NamedTemporaryFile(prefix="ferric_browser_smoke_", suffix=".db", delete=False)
+  db_file.close()
+  database_url = f"sqlite:///{db_file.name}"
+
+  migration = subprocess.run(
+    ["python3", "-m", "alembic", "-c", "backend/alembic.ini", "upgrade", "head"],
+    env={**os.environ, "DATABASE_URL": database_url},
+    stdout=subprocess.DEVNULL,
+    stderr=subprocess.DEVNULL,
+  )
+  if migration.returncode != 0:
+    raise RuntimeError("failed to apply database migrations for browser smoke")
+
+  seed = subprocess.run(
+    ["python3", "-m", "backend.app.seed_catalog"],
+    env={**os.environ, "DATABASE_URL": database_url},
+    stdout=subprocess.DEVNULL,
+    stderr=subprocess.DEVNULL,
+  )
+  if seed.returncode != 0:
+    raise RuntimeError("failed to seed catalog for browser smoke")
 
   backend = subprocess.Popen(
     ["python3", "-m", "uvicorn", "backend.app.main:app", "--host", "127.0.0.1", "--port", str(backend_port)],
+    env={**os.environ, "DATABASE_URL": database_url},
     stdout=subprocess.DEVNULL,
     stderr=subprocess.DEVNULL,
   )
@@ -129,6 +152,10 @@ def main() -> int:
     except Exception:
       frontend.kill()
       backend.kill()
+    try:
+      os.unlink(db_file.name)
+    except Exception:
+      pass
 
 
 if __name__ == "__main__":

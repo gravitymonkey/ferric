@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+import logging
 import mimetypes
 import os
 import shutil
@@ -13,6 +14,14 @@ from urllib import error, parse, request
 ROOT = Path.cwd().resolve()
 PORT = int(os.environ.get("PORT", "8080"))
 BACKEND_ORIGIN = os.environ.get("BACKEND_ORIGIN", "http://127.0.0.1:8000").rstrip("/")
+LOG_PATH = Path(os.environ.get("FERRIC_FRONTEND_LOG_PATH", str(ROOT / "backend" / "logs" / "frontend.log"))).resolve()
+LOG_PATH.parent.mkdir(parents=True, exist_ok=True)
+logger = logging.getLogger("ferric.frontend")
+if not logger.handlers:
+    logger.setLevel(logging.INFO)
+    handler = logging.FileHandler(LOG_PATH, encoding="utf-8")
+    handler.setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(message)s"))
+    logger.addHandler(handler)
 
 mimetypes.add_type("text/javascript", ".mjs")
 mimetypes.add_type("application/vnd.apple.mpegurl", ".m3u8")
@@ -57,6 +66,7 @@ class DevHandler(BaseHTTPRequestHandler):
 
     def _proxy_to_backend(self, send_body: bool) -> None:
         upstream = f"{BACKEND_ORIGIN}{self.path}"
+        upstream_path = parse.urlparse(self.path).path
         length = int(self.headers.get("Content-Length", "0") or "0")
         body = self.rfile.read(length) if length else None
         headers = {k: v for k, v in self.headers.items() if k.lower() != "host"}
@@ -75,6 +85,7 @@ class DevHandler(BaseHTTPRequestHandler):
                 self.end_headers()
                 if send_body:
                     self.wfile.write(payload)
+                logger.info("proxy method=%s path=%s status=%s upstream=%s", self.command, upstream_path, resp.status, BACKEND_ORIGIN)
         except error.HTTPError as exc:
             payload = exc.read()
             self.send_response(exc.code)
@@ -87,6 +98,7 @@ class DevHandler(BaseHTTPRequestHandler):
             self.end_headers()
             if send_body:
                 self.wfile.write(payload)
+            logger.info("proxy method=%s path=%s status=%s upstream=%s", self.command, upstream_path, exc.code, BACKEND_ORIGIN)
         except Exception:
             payload = json.dumps(
                 {
@@ -101,6 +113,7 @@ class DevHandler(BaseHTTPRequestHandler):
             self.end_headers()
             if send_body:
                 self.wfile.write(payload)
+            logger.exception("proxy_error method=%s path=%s upstream=%s", self.command, upstream_path, BACKEND_ORIGIN)
 
     def _serve_static(self, send_body: bool) -> None:
         parsed = parse.urlparse(self.path)
@@ -126,6 +139,7 @@ class DevHandler(BaseHTTPRequestHandler):
         if send_body:
             with target.open("rb") as fh:
                 shutil.copyfileobj(fh, self.wfile)
+        logger.info("static method=%s path=%s status=200", self.command, req_path)
 
     def log_message(self, format: str, *args) -> None:  # noqa: A003
         return
@@ -134,6 +148,7 @@ class DevHandler(BaseHTTPRequestHandler):
 def main() -> None:
     server = ThreadingHTTPServer(("", PORT), DevHandler)
     print(f"Ferric python dev server running on http://localhost:{PORT}/public/index.html")
+    logger.info("frontend_server_start port=%s root=%s", PORT, ROOT)
     server.serve_forever()
 
 

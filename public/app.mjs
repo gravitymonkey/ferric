@@ -27,9 +27,8 @@ function asBrowserTrack(track) {
   const rawFallbackUrl = track.stream?.fallback_url ?? null;
   const normalizedUrl = rawStreamUrl.startsWith("/generated/hls/") ? `/public${rawStreamUrl}` : rawStreamUrl;
   const normalizedFallback = rawFallbackUrl?.startsWith("/assets/raw-audio/") ? rawFallbackUrl : rawFallbackUrl ?? null;
-  const normalizedArtwork = track.artwork?.square_512?.startsWith("/")
-    ? track.artwork.square_512
-    : track.artwork?.square_512 ?? null;
+  const rawArtwork = track.artwork?.square_512 ?? null;
+  const normalizedArtwork = rawArtwork?.startsWith("/images/") ? `/public${rawArtwork}` : rawArtwork;
 
   return {
     ...track,
@@ -52,6 +51,26 @@ function formatTime(sec) {
   return `${m}:${String(r).padStart(2, "0")}`;
 }
 
+function getCookieValue(name) {
+  const entries = document.cookie ? document.cookie.split(";").map((v) => v.trim()) : [];
+  for (const entry of entries) {
+    if (entry.startsWith(`${name}=`)) {
+      return decodeURIComponent(entry.slice(name.length + 1));
+    }
+  }
+  return null;
+}
+
+function ensureUserIdCookie() {
+  const existing = getCookieValue("ferric_user_id");
+  if (existing) {
+    return existing;
+  }
+  const generated = `user_${Math.random().toString(36).slice(2, 10)}${Date.now().toString(36).slice(-4)}`;
+  document.cookie = `ferric_user_id=${encodeURIComponent(generated)}; Path=/; Max-Age=31536000; SameSite=Lax`;
+  return generated;
+}
+
 async function main() {
   const statusEl = document.getElementById("status");
   const listView = document.getElementById("list-view");
@@ -71,6 +90,8 @@ async function main() {
   const miniNowPlaying = document.getElementById("mini-now-playing");
   const miniNowPlayingMain = document.getElementById("mini-now-playing-main");
   const miniNowPlayingTime = document.getElementById("mini-now-playing-time");
+  const artworkLightbox = document.getElementById("artwork-lightbox");
+  const artworkLightboxImage = document.getElementById("artwork-lightbox-image");
   const playPauseBtn = document.getElementById("play-pause");
   const prevBtn = document.getElementById("previous");
   const nextBtn = document.getElementById("next");
@@ -102,6 +123,28 @@ async function main() {
   let tracks = [];
   let selectedTrackId = null;
   let isScrubbing = false;
+
+  async function sendListenEvent(action, trackId, positionSec = null) {
+    if (!trackId) {
+      return;
+    }
+    const userId = ensureUserIdCookie();
+    try {
+      await fetch("/api/v1/events/listen", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          user_id: userId,
+          track_id: trackId,
+          action,
+          position_sec: Number.isFinite(positionSec) ? Math.max(0, Math.floor(positionSec)) : null
+        }),
+        keepalive: true
+      });
+    } catch {
+      // Non-blocking analytics path by design.
+    }
+  }
 
   const navBaseClass =
     "rounded-lg px-4 py-2 text-sm font-semibold transition";
@@ -173,6 +216,9 @@ async function main() {
     if (!displayTrack) {
       npEmpty.classList.remove("hidden");
       npContent.classList.add("hidden");
+      npArtwork.dataset.hasArtwork = "false";
+      npArtwork.classList.remove("cursor-zoom-in");
+      npArtwork.classList.add("cursor-default");
       npScrubber.value = "0";
       npScrubber.max = "100";
       npScrubber.disabled = true;
@@ -183,6 +229,10 @@ async function main() {
       npContent.classList.remove("hidden");
       npArtwork.src = displayTrack.artwork?.square_512 || "";
       npArtwork.alt = `${displayTrack.title} cover art`;
+      const hasArtwork = Boolean(displayTrack.artwork?.square_512);
+      npArtwork.dataset.hasArtwork = hasArtwork ? "true" : "false";
+      npArtwork.classList.toggle("cursor-zoom-in", hasArtwork);
+      npArtwork.classList.toggle("cursor-default", !hasArtwork);
       npTitle.textContent = displayTrack.title;
       npArtist.textContent = displayTrack.artist;
 
@@ -228,8 +278,28 @@ async function main() {
   }
 
   npArtwork.addEventListener("error", () => {
+    npArtwork.dataset.hasArtwork = "false";
+    npArtwork.classList.remove("cursor-zoom-in");
+    npArtwork.classList.add("cursor-default");
     npArtwork.src =
       "data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 96 96'%3E%3Crect width='96' height='96' fill='%230f172a'/%3E%3Ccircle cx='48' cy='48' r='24' fill='%231e293b'/%3E%3C/svg%3E";
+  });
+
+  npArtwork.addEventListener("click", () => {
+    if (npArtwork.dataset.hasArtwork !== "true") {
+      return;
+    }
+    artworkLightboxImage.src = npArtwork.src;
+    artworkLightbox.classList.remove("hidden");
+    artworkLightbox.classList.add("flex");
+    artworkLightbox.setAttribute("aria-hidden", "false");
+  });
+
+  artworkLightboxImage.addEventListener("click", () => {
+    artworkLightbox.classList.add("hidden");
+    artworkLightbox.classList.remove("flex");
+    artworkLightbox.setAttribute("aria-hidden", "true");
+    artworkLightboxImage.src = "";
   });
 
   npScrubber.addEventListener("input", () => {
@@ -249,6 +319,7 @@ async function main() {
     }
 
     await controller.seek(seekTo);
+    await sendListenEvent("seek", targetTrackId, seekTo);
     isScrubbing = false;
     render();
   });
@@ -292,9 +363,11 @@ async function main() {
         const isCurrentTrack = state.currentTrackId === track.id;
         if (isCurrentTrack && state.isPlaying) {
           await controller.pause();
+          await sendListenEvent("pause", track.id, state.positionSec);
         } else {
           selectedTrackId = track.id;
           await controller.playAt(index);
+          await sendListenEvent("start", track.id, 0);
           shell.switchView("now-playing");
         }
         render();
@@ -323,25 +396,43 @@ async function main() {
 
     if (state.currentTrackId === targetTrackId && state.isPlaying) {
       await controller.pause();
+      await sendListenEvent("pause", targetTrackId, state.positionSec);
     } else {
       const targetIndex = tracks.findIndex((track) => track.id === targetTrackId);
       if (targetIndex >= 0) {
         await controller.playAt(targetIndex);
         selectedTrackId = targetTrackId;
+        await sendListenEvent("start", targetTrackId, controller.getState().positionSec);
       }
     }
     render();
   });
 
   prevBtn.addEventListener("click", async () => {
+    const before = controller.getState();
+    if (before.currentTrackId) {
+      await sendListenEvent("skip_previous", before.currentTrackId, before.positionSec);
+    }
     await controller.previous();
     selectedTrackId = controller.getState().currentTrackId ?? selectedTrackId;
+    const after = controller.getState();
+    if (after.currentTrackId && after.isPlaying) {
+      await sendListenEvent("start", after.currentTrackId, after.positionSec);
+    }
     render();
   });
 
   nextBtn.addEventListener("click", async () => {
+    const before = controller.getState();
+    if (before.currentTrackId) {
+      await sendListenEvent("skip_next", before.currentTrackId, before.positionSec);
+    }
     await controller.next();
     selectedTrackId = controller.getState().currentTrackId ?? selectedTrackId;
+    const after = controller.getState();
+    if (after.currentTrackId && after.isPlaying) {
+      await sendListenEvent("start", after.currentTrackId, after.positionSec);
+    }
     render();
   });
 
@@ -375,6 +466,9 @@ async function main() {
 
   mediaEngine.onEnded(async () => {
     const before = controller.getState();
+    if (before.currentTrackId) {
+      await sendListenEvent("finish", before.currentTrackId, before.positionSec);
+    }
     const wasViewingPlayingTrack = selectedTrackId && selectedTrackId === before.currentTrackId;
     await controller.handleTrackEnded();
     const after = controller.getState();
@@ -386,6 +480,9 @@ async function main() {
       if (shell.currentView === "now-playing") {
         animateTrackDetailShift();
       }
+    }
+    if (advancedToDifferentTrack && after.currentTrackId && after.isPlaying) {
+      await sendListenEvent("start", after.currentTrackId, after.positionSec);
     }
     render();
   });

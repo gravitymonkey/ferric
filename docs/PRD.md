@@ -1,8 +1,8 @@
 # Ferric POC --- Product Requirements Document
 
-**Version:** 0.4  
-**Date:** 2026-02-28  
-**Status:** Draft (POC Scope)
+**Version:** 0.8  
+**Date:** 2026-03-01  
+**Status:** Active (POC Baseline)
 
 ---
 
@@ -14,6 +14,7 @@ The POC is intentionally split into two complementary phases:
 
 - Phase 1: static, web-first HLS implementation with no backend
 - Phase 2: evolve to a Python backend while preserving proven Phase 1 UX and playback patterns
+- Phase 3: add DB-backed persistence and admin media management capabilities
 
 These phases are intended to validate product feasibility quickly first, then validate backend architecture direction second.
 
@@ -32,6 +33,10 @@ Prove end-to-end consumer playback UX quickly using static catalog + web-first H
 ### Phase 2 Goal (Backend Evolution)
 
 Introduce a Python backend that replaces static data paths/API stubs with real service boundaries, without discarding Phase 1 learnings.
+
+### Phase 3 Goal (Operationalization)
+
+Move from static/file-backed operations to DB-backed catalog/session persistence, add lightweight admin workflows for metadata/uploads, and capture core listening telemetry for early product insight.
 
 ---
 
@@ -60,6 +65,22 @@ Introduce a Python backend that replaces static data paths/API stubs with real s
 - Preserve frontend UX flows while changing data/control plane
 - Add auth-ready and analytics-ready extension points
 
+### Phase 3 In Scope
+
+- DB-backed persistence for catalog and sessions
+- Adapter-flexible local/deploy DB strategy (SQLite and Postgres)
+- Alembic-managed schema migration lifecycle
+- Lightweight admin auth and UI for metadata and media uploads
+- Listening event capture and basic per-track/per-user stats
+- Upload-time audio metadata extraction for future discovery and recommendations work
+- Admin recency tracking (`updated_at`, first-publish `uploaded_at`) and sortable operational listings
+
+### Phase 3 Out of Scope
+
+- Full identity/account management
+- Production-grade RBAC/permissions system
+- Object storage and distributed media processing at scale
+
 ---
 
 ## 4. Phase 1 Product Requirements (Static, Web-First)
@@ -72,7 +93,6 @@ Introduce a Python backend that replaces static data paths/API stubs with real s
 - Support:
   - Play / Pause
   - Scrubbing
-  - ±10 second skip
   - Next / Previous
   - Shuffle
   - Repeat (off / one / all)
@@ -130,7 +150,7 @@ These defaults are for speed and consistency in the initial POC and may evolve i
 
 ---
 
-## 6. Phase 2 Requirements (Python Backend)
+## 6. Backend API Requirements and Current Contract (v1)
 
 ### Backend Responsibilities
 
@@ -147,7 +167,7 @@ These defaults are for speed and consistency in the initial POC and may evolve i
 - Data loading transitions from static file access to API clients
 - Playback behavior parity is maintained during migration
 
-### API Contract Sketch (v1)
+### API Contract (Implemented)
 
 Base path: `/api/v1`
 
@@ -155,10 +175,10 @@ Base path: `/api/v1`
 
 - JSON request/response
 - `Content-Type: application/json`
-- Use stable string IDs (`track_001`, `session_abc123`)
+- Use stable string IDs (legacy seeded tracks may use `track_001`; new admin-created tracks default to UUIDs)
 - Timestamp format: ISO-8601 UTC
 
-#### Endpoints
+#### Public Endpoints (`/api/v1`)
 
 1. `GET /health`
    - Purpose: service health check for dev and CI
@@ -224,7 +244,8 @@ Base path: `/api/v1`
        "track_id": "track_001",
        "stream": {
          "protocol": "hls",
-         "url": "/hls/track_001/playlist.m3u8",
+         "url": "/generated/hls/track_001/playlist.m3u8",
+         "fallback_url": "/assets/raw-audio/managed/track_001/source.mp3",
          "expires_at": "2026-02-28T12:30:00Z",
          "requires_auth": false
        }
@@ -284,6 +305,64 @@ Base path: `/api/v1`
      }
      ```
 
+8. `POST /events/listen`
+   - Purpose: ingest listener interaction events for analytics
+   - Request body:
+     ```json
+     {
+       "user_id": "user_abc123",
+       "track_id": "track_001",
+       "action": "start",
+       "position_sec": 0
+     }
+     ```
+   - Allowed actions: `start`, `pause`, `seek`, `skip_next`, `skip_previous`, `finish`
+   - `200` response:
+     ```json
+     {
+       "accepted": true
+     }
+     ```
+
+#### Admin Endpoints (`/api/v1/admin`, HTTP Basic protected)
+
+Auth for local/dev defaults to:
+
+- `FERRIC_ADMIN_USER=admin`
+- `FERRIC_ADMIN_PASSWORD=admin`
+
+Implemented endpoints:
+
+1. `GET /tracks`
+   - Query params (optional): `q`, `status`
+   - Track rows include `updated_at` and `uploaded_at` for admin recency visibility/sorting in listings.
+   - `uploaded_at` is null until the first successful transition to `published`, then remains fixed.
+2. `GET /tracks/{track_id}`
+3. `POST /tracks`
+   - `duration_sec` is optional at create time (defaults to `0`) and can be inferred/updated from uploaded audio metadata.
+4. `PATCH /tracks/{track_id}`
+5. `POST /tracks/{track_id}/upload/audio`
+   - Upload stores fallback audio path and attempts immediate HLS generation for playback readiness.
+6. `POST /tracks/{track_id}/upload/artwork`
+7. `POST /tracks/{track_id}/publish`
+   - Publish requires media readiness (playlist + fallback files exist).
+8. `GET /tracks/{track_id}/metadata`
+9. `GET /stats/tracks`
+10. `GET /stats/users/{user_id}`
+11. `GET /logs`
+    - Query params: `source` (`backend`/`frontend`), `lines` (`1..1000`)
+    - Source is allowlisted and file-backed (no shell command execution)
+
+In addition, `/admin` and `/admin/logs` serve lightweight Tailwind admin UIs for catalog management and operational log review.
+
+Current `/admin` UI baseline:
+
+- Tabbed sections: `Stats`, `Listings`, `Create New` (+ per-track edit view)
+- Listings table columns: `Title`, `Artist`, `Status`, `Uploaded`, `Updated`, `Plays`, `Actions`
+- Listings sort supports: `title`, `artist`, `status`, `uploaded_at`, `updated_at`, `plays`
+- Edit page save action includes inline status feedback (`Saving...`, `Saved`, `Save failed`)
+- While upload is in-flight, navigation/unload prompts a browser confirmation warning before leaving the page
+
 #### Error Schema
 
 All non-2xx responses should use:
@@ -298,7 +377,7 @@ All non-2xx responses should use:
 }
 ```
 
-Initial error codes:
+Current public API error codes:
 
 - `BAD_REQUEST`
 - `TRACK_NOT_FOUND`
@@ -323,6 +402,15 @@ Initial error codes:
 - Playback flow remains stable after integration
 - Key Phase 1 capabilities retained
 
+### Phase 3: Persistence + Admin + Analytics Baseline
+
+- SQLAlchemy + Alembic migration workflow established
+- Catalog and session persistence backed by DB
+- Admin API + `/admin` UI shipped with lightweight auth
+- Admin operational log review path shipped (`/api/v1/admin/logs`, `/admin/logs`)
+- Upload-time metadata extraction path implemented
+- Listener event ingestion and top-track/user stats implemented
+
 ---
 
 ## 8. Definition of Done
@@ -331,7 +419,8 @@ POC is successful when:
 
 1. Phase 1 proves consumer listening UX feasibility with static web-first HLS implementation
 2. Phase 2 proves the same experience can be supported by a Python backend directionally aligned with future product growth
-3. Team documents feasibility findings, risks, and recommended next implementation path
+3. Phase 3 validates DB-backed operations, admin workflows, and early analytics capture
+4. Team documents feasibility findings, risks, and recommended next implementation path
 
 ---
 
@@ -344,7 +433,20 @@ POC is successful when:
 Open decisions after Phase 1:
 
 - Priority order for additional clients (web refinement vs React Native vs Swift)
-- First auth strategy for backend-backed playback
+- Hardening path from lightweight HTTP Basic admin auth to stronger auth model
+- Phase 4+ plan for recommendations/insights powered by collected listening + metadata signals
+
+---
+
+## 10. References
+
+Current implementation details and change log are maintained in:
+
+- `docs/TODO.md`
+
+Phase 3 planning notes and future increments are maintained in:
+
+- `docs/phase3-plan.md`
 
 ---
 
