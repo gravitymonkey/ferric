@@ -2,6 +2,12 @@
 
 <img src="./docs/ferric.png" alt="Ferric" width="200" />
 
+
+Building a Spotify clone in 2026 has roughly the same energy as opening a corner bookstore next to an Amazon fulfillment center – technically unnecessary, probably financially irrational, and also, somehow, the most defensible thing you could do. The monopoly doesn't win because it was the best idea, sometimes they abuse their power, but also sometimes they won because enough people decided someone else would handle it. Every streaming service that exists today started as someone's weekend project, someone's "wait, why can't I just" moment at 2 a.m. The fact that one of them scaled into an extractive algorithmic overlord doesn't retroactively make the original impulse wrong. Build the service. Own the thing. The internet we want is just the one we bother to make.
+
+Live demo <A HREF="https://ferric.gravitymonkey.com">here</A>.
+
+
 ## Getting Started
 
 1. From repo root, start API + Web services (additional players coming soonish):
