@@ -9,16 +9,28 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
+if not os.environ.get("FERRIC_ADMIN_USER"):
+    os.environ["FERRIC_ADMIN_USER"] = "admin"
+if not os.environ.get("FERRIC_ADMIN_PASSWORD"):
+    os.environ["FERRIC_ADMIN_PASSWORD"] = "admin"
+
 from backend.app.db import get_db
 from backend.app import admin_api
+from backend.app.admin_auth import reset_admin_auth_throttle_state
 from backend.app.main import create_app
 from backend.app.models import Base
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
+VALID_MP3_BYTES = b"ID3\x04\x00\x00\x00\x00\x00\x00FAKE"
 
 
 @pytest.fixture()
 def client() -> TestClient:
+    reset_admin_auth_throttle_state()
+    if not os.environ.get("FERRIC_ADMIN_USER"):
+        os.environ["FERRIC_ADMIN_USER"] = "admin"
+    if not os.environ.get("FERRIC_ADMIN_PASSWORD"):
+        os.environ["FERRIC_ADMIN_PASSWORD"] = "admin"
     app = create_app()
     engine = create_engine(
         "sqlite+pysqlite:///:memory:",
@@ -47,6 +59,13 @@ def test_app_scaffold_boots(client: TestClient) -> None:
     payload = response.json()
     assert payload["info"]["title"] == "ferric-api"
     assert payload["info"]["version"] == "0.1.0"
+
+
+def test_app_startup_requires_admin_credentials(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv("FERRIC_ADMIN_USER", raising=False)
+    monkeypatch.delenv("FERRIC_ADMIN_PASSWORD", raising=False)
+    with pytest.raises(RuntimeError):
+        create_app()
 
 
 def test_health_endpoint_schema(client: TestClient) -> None:
@@ -245,6 +264,20 @@ def test_admin_requires_basic_auth(client: TestClient) -> None:
     assert response.status_code == 401
 
 
+def test_admin_auth_throttles_repeated_failures(client: TestClient, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr("backend.app.admin_auth.MAX_FAILED_ATTEMPTS", 2)
+    monkeypatch.setattr("backend.app.admin_auth.MAX_FAILED_IP_ATTEMPTS", 5)
+    monkeypatch.setattr("backend.app.admin_auth.FAIL_WINDOW_SEC", 600)
+    monkeypatch.setattr("backend.app.admin_auth.LOCKOUT_SEC", 900)
+
+    bad = _admin_headers("admin", "wrong-password")
+    assert client.get("/api/v1/admin/tracks", headers=bad).status_code == 401
+    assert client.get("/api/v1/admin/tracks", headers=bad).status_code == 401
+    throttled = client.get("/api/v1/admin/tracks", headers=bad)
+    assert throttled.status_code == 429
+    assert "Retry-After" in throttled.headers
+
+
 def test_admin_track_create_update_publish_flow(client: TestClient) -> None:
     headers = _admin_headers()
     create_response = client.post(
@@ -281,7 +314,7 @@ def test_admin_track_create_update_publish_flow(client: TestClient) -> None:
     upload_audio_response = client.post(
         "/api/v1/admin/tracks/track_admin_001/upload/audio",
         headers=headers,
-        files={"file": ("sample.mp3", b"fake-audio-bytes", "audio/mpeg")},
+        files={"file": ("sample.mp3", VALID_MP3_BYTES, "audio/mpeg")},
     )
     assert upload_audio_response.status_code == 200
     stream_payload = upload_audio_response.json()
@@ -379,7 +412,7 @@ def test_uploaded_at_set_once_on_first_publish_transition(client: TestClient) ->
     upload_audio_response = client.post(
         f"/api/v1/admin/tracks/{track_id}/upload/audio",
         headers=headers,
-        files={"file": ("sample.mp3", b"fake-audio-bytes", "audio/mpeg")},
+        files={"file": ("sample.mp3", VALID_MP3_BYTES, "audio/mpeg")},
     )
     assert upload_audio_response.status_code == 200
     playlist = REPO_ROOT / "public" / "generated" / "hls" / track_id / "playlist.m3u8"
@@ -523,8 +556,9 @@ def test_admin_logs_endpoint_missing_file_returns_empty(client: TestClient, tmp_
             os.environ["FERRIC_LOG_DIR"] = old
 
 
-def test_admin_upload_artwork(client: TestClient) -> None:
+def test_admin_upload_artwork(client: TestClient, monkeypatch: pytest.MonkeyPatch) -> None:
     headers = _admin_headers()
+    monkeypatch.setattr(admin_api, "_validate_artwork_file", lambda _path: True)
     client.post(
         "/api/v1/admin/tracks",
         headers=headers,
@@ -545,6 +579,51 @@ def test_admin_upload_artwork(client: TestClient) -> None:
     assert response.status_code == 200
     payload = response.json()
     assert payload["artwork"]["square_512"].startswith("/images/managed/")
+
+
+def test_admin_upload_artwork_rejects_invalid_content(client: TestClient) -> None:
+    headers = _admin_headers()
+    client.post(
+        "/api/v1/admin/tracks",
+        headers=headers,
+        json={
+            "id": "track_bad_art_001",
+            "title": "Bad Art Song",
+            "artist": "Bad Art Artist",
+            "duration_sec": 180,
+            "status": "draft",
+        },
+    )
+    response = client.post(
+        "/api/v1/admin/tracks/track_bad_art_001/upload/artwork",
+        headers=headers,
+        files={"file": ("cover.png", b"not-an-image", "image/png")},
+    )
+    assert response.status_code == 400
+    assert "invalid artwork file content" in response.json()["error"]["message"]
+
+
+def test_admin_upload_artwork_rejects_oversize_payload(client: TestClient, monkeypatch: pytest.MonkeyPatch) -> None:
+    headers = _admin_headers()
+    monkeypatch.setattr(admin_api, "MAX_ARTWORK_UPLOAD_BYTES", 8)
+    client.post(
+        "/api/v1/admin/tracks",
+        headers=headers,
+        json={
+            "id": "track_large_art_001",
+            "title": "Large Art Song",
+            "artist": "Large Art Artist",
+            "duration_sec": 180,
+            "status": "draft",
+        },
+    )
+    response = client.post(
+        "/api/v1/admin/tracks/track_large_art_001/upload/artwork",
+        headers=headers,
+        files={"file": ("cover.png", b"\x89PNG\r\n\x1a\nEXTRA_BYTES", "image/png")},
+    )
+    assert response.status_code == 413
+    assert response.json()["error"]["code"] == "PAYLOAD_TOO_LARGE"
 
 
 def test_admin_upload_audio_persists_track_metadata(client: TestClient, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -589,7 +668,7 @@ def test_admin_upload_audio_persists_track_metadata(client: TestClient, monkeypa
     upload_response = client.post(
         "/api/v1/admin/tracks/track_meta_001/upload/audio",
         headers=headers,
-        files={"file": ("sample.mp3", b"fake-audio-bytes", "audio/mpeg")},
+        files={"file": ("sample.mp3", VALID_MP3_BYTES, "audio/mpeg")},
     )
     assert upload_response.status_code == 200
 
@@ -599,6 +678,53 @@ def test_admin_upload_audio_persists_track_metadata(client: TestClient, monkeypa
     assert payload["track_id"] == "track_meta_001"
     assert payload["sample_rate_hz"] == 44100
     assert payload["tempo_bpm"] == 120.1
+
+
+def test_admin_upload_audio_rejects_invalid_signature(client: TestClient) -> None:
+    headers = _admin_headers()
+    client.post(
+        "/api/v1/admin/tracks",
+        headers=headers,
+        json={
+            "id": "track_bad_audio_001",
+            "title": "Bad Audio Song",
+            "artist": "Bad Audio Artist",
+            "duration_sec": 120,
+            "status": "draft",
+        },
+    )
+
+    response = client.post(
+        "/api/v1/admin/tracks/track_bad_audio_001/upload/audio",
+        headers=headers,
+        files={"file": ("sample.mp3", b"not-an-audio-file", "audio/mpeg")},
+    )
+    assert response.status_code == 400
+    assert "invalid audio file content" in response.json()["error"]["message"]
+
+
+def test_admin_upload_audio_rejects_oversize_payload(client: TestClient, monkeypatch: pytest.MonkeyPatch) -> None:
+    headers = _admin_headers()
+    monkeypatch.setattr(admin_api, "MAX_AUDIO_UPLOAD_BYTES", 8)
+    client.post(
+        "/api/v1/admin/tracks",
+        headers=headers,
+        json={
+            "id": "track_large_audio_001",
+            "title": "Big Audio Song",
+            "artist": "Big Audio Artist",
+            "duration_sec": 120,
+            "status": "draft",
+        },
+    )
+
+    response = client.post(
+        "/api/v1/admin/tracks/track_large_audio_001/upload/audio",
+        headers=headers,
+        files={"file": ("sample.mp3", VALID_MP3_BYTES + b"EXTRA_BYTES", "audio/mpeg")},
+    )
+    assert response.status_code == 413
+    assert response.json()["error"]["code"] == "PAYLOAD_TOO_LARGE"
 
 
 def test_admin_upload_audio_updates_track_duration_from_metadata(
@@ -630,7 +756,7 @@ def test_admin_upload_audio_updates_track_duration_from_metadata(
     upload_response = client.post(
         "/api/v1/admin/tracks/track_meta_duration_001/upload/audio",
         headers=headers,
-        files={"file": ("sample.mp3", b"fake-audio-bytes", "audio/mpeg")},
+        files={"file": ("sample.mp3", VALID_MP3_BYTES, "audio/mpeg")},
     )
     assert upload_response.status_code == 200
     payload = upload_response.json()
@@ -663,7 +789,7 @@ def test_admin_upload_audio_updates_track_duration_via_ffprobe_fallback(
     upload_response = client.post(
         "/api/v1/admin/tracks/track_probe_duration_001/upload/audio",
         headers=headers,
-        files={"file": ("sample.mp3", b"fake-audio-bytes", "audio/mpeg")},
+        files={"file": ("sample.mp3", VALID_MP3_BYTES, "audio/mpeg")},
     )
     assert upload_response.status_code == 200
     payload = upload_response.json()

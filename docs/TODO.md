@@ -1,6 +1,6 @@
 # Ferric POC TODO
 
-**Date:** 2026-03-01  
+**Date:** 2026-03-02  
 **Source:** [PRD.md](./PRD.md)
 
 ---
@@ -227,3 +227,6 @@ Keep tests intentionally lightweight and fast.
 - 2026-03-01: Simplified admin Listings density by removing `ID` and `Duration` columns; table now emphasizes editorial and operational fields (`Title`, `Artist`, `Status`, `Uploaded`, `Updated`, `Plays`).
 - 2026-03-01: Updated admin Listings timestamp presentation for readability to `MM/DD/YY HH:MM AM/PM` for both `Uploaded` and `Updated`.
 - 2026-03-01: Added inline save-state feedback beside `Save Changes` on track edit (`Saving...`, `Saved`, `Save failed`) so commit completion is visible at the action point.
+- 2026-03-02: Hardened admin auth config and abuse controls: backend now fails startup unless `FERRIC_ADMIN_USER` and `FERRIC_ADMIN_PASSWORD` are explicitly set, and app-level login throttling/lockout defaults were added (`5` failed tuple attempts / `30` failed IP attempts in `10m`, `15m` lockout).
+- 2026-03-02: Hardened admin uploads: switched to chunked streaming writes with app-enforced size caps (`100 MB` audio, `8 MB` artwork), added signature/image-content validation beyond extension checks, and standardized oversize responses to `413 PAYLOAD_TOO_LARGE`.
+- 2026-03-02: Reduced admin stored-XSS risk by escaping dynamic strings rendered through HTML templates in listings, top-track stats rows, and track metadata table output.

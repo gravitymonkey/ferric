@@ -405,15 +405,27 @@ def admin_page() -> str:
         return `${month}/${day}/${year} ${hours12}:${minute} ${ampm}`;
       }
 
+      function escapeHtml(value) {
+        return String(value ?? "")
+          .replaceAll("&", "&amp;")
+          .replaceAll("<", "&lt;")
+          .replaceAll(">", "&gt;")
+          .replaceAll('"', "&quot;")
+          .replaceAll("'", "&#39;");
+      }
+
       function renderTrackRow(track) {
         const plays = listingState.playsByTrackId.get(track.id) || 0;
-        const uploaded = formatAdminDateTime(track.uploaded_at);
-        const updated = formatAdminDateTime(track.updated_at);
+        const uploaded = escapeHtml(formatAdminDateTime(track.uploaded_at));
+        const updated = escapeHtml(formatAdminDateTime(track.updated_at));
+        const safeTitle = escapeHtml(track.title);
+        const safeArtist = escapeHtml(track.artist);
+        const safeStatus = escapeHtml(track.status);
         return `
           <tr data-track-id="${track.id}" class="align-top">
-            <td class="px-3 py-2 text-slate-100">${track.title}</td>
-            <td class="px-3 py-2 text-slate-200">${track.artist}</td>
-            <td class="px-3 py-2"><span class="uppercase text-slate-300">${track.status}</span></td>
+            <td class="px-3 py-2 text-slate-100">${safeTitle}</td>
+            <td class="px-3 py-2 text-slate-200">${safeArtist}</td>
+            <td class="px-3 py-2"><span class="uppercase text-slate-300">${safeStatus}</span></td>
             <td class="whitespace-nowrap px-3 py-2 text-slate-300">${uploaded}</td>
             <td class="whitespace-nowrap px-3 py-2 text-slate-300">${updated}</td>
             <td class="whitespace-nowrap px-3 py-2 text-cyan-200">${plays}</td>
@@ -492,10 +504,12 @@ def admin_page() -> str:
             ${fields
               .map(([key, value]) => {
                 const rendered = value === null || value === undefined || value === "" ? "-" : String(value);
+                const safeKey = escapeHtml(key);
+                const safeRendered = escapeHtml(rendered);
                 return `
                   <tr>
-                    <td class="whitespace-nowrap px-3 py-2 text-xs uppercase tracking-wide text-slate-400">${key}</td>
-                    <td class="px-3 py-2 break-all text-slate-100">${rendered}</td>
+                    <td class="whitespace-nowrap px-3 py-2 text-xs uppercase tracking-wide text-slate-400">${safeKey}</td>
+                    <td class="px-3 py-2 break-all text-slate-100">${safeRendered}</td>
                   </tr>
                 `;
               })
@@ -622,7 +636,7 @@ def admin_page() -> str:
             .map(
               (row, idx) => `
                 <button data-action="stats-open-track" data-track-id="${row.track_id}" class="flex w-full items-center justify-between rounded-md border border-slate-700 bg-slate-900/70 px-3 py-2 text-left transition hover:border-cyan-500/60 hover:bg-slate-900">
-                  <span class="truncate pr-3 text-slate-200">${idx + 1}. ${names.get(row.track_id) || row.track_id}</span>
+                  <span class="truncate pr-3 text-slate-200">${idx + 1}. ${escapeHtml(names.get(row.track_id) || row.track_id)}</span>
                   <span class="shrink-0 text-cyan-200">${row.starts} plays</span>
                 </button>
               `
