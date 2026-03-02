@@ -1,7 +1,7 @@
 # Ferric POC --- Product Requirements Document
 
-**Version:** 0.8  
-**Date:** 2026-03-01  
+**Version:** 0.9  
+**Date:** 2026-03-02  
 **Status:** Active (POC Baseline)
 
 ---
@@ -326,10 +326,11 @@ Base path: `/api/v1`
 
 #### Admin Endpoints (`/api/v1/admin`, HTTP Basic protected)
 
-Auth for local/dev defaults to:
+Auth for local/dev requires explicit env config:
 
-- `FERRIC_ADMIN_USER=admin`
-- `FERRIC_ADMIN_PASSWORD=admin`
+- `FERRIC_ADMIN_USER` (required)
+- `FERRIC_ADMIN_PASSWORD` (required)
+- Startup fails if either value is unset/empty.
 
 Implemented endpoints:
 
@@ -343,7 +344,9 @@ Implemented endpoints:
 4. `PATCH /tracks/{track_id}`
 5. `POST /tracks/{track_id}/upload/audio`
    - Upload stores fallback audio path and attempts immediate HLS generation for playback readiness.
+   - App-enforced upload limit default: `100 MB` (`FERRIC_MAX_AUDIO_UPLOAD_MB`).
 6. `POST /tracks/{track_id}/upload/artwork`
+   - App-enforced upload limit default: `8 MB` (`FERRIC_MAX_ARTWORK_UPLOAD_MB`).
 7. `POST /tracks/{track_id}/publish`
    - Publish requires media readiness (playlist + fallback files exist).
 8. `GET /tracks/{track_id}/metadata`

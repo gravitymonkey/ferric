@@ -3,7 +3,7 @@
 <img src="./docs/ferric.png" alt="Ferric" width="200" />
 
 
-Building a Spotify clone in 2026 has roughly the same energy as opening a corner bookstore next to an Amazon fulfillment center – technically unnecessary, probably financially irrational, and also, somehow, the most defensible thing you could do. The monopoly doesn't win because it was the best idea, sometimes they abuse their power, but also sometimes they won because enough people decided someone else would handle it. Every streaming service that exists today started as someone's weekend project, someone's "wait, why can't I just" moment at 2 a.m. The fact that one of them scaled into an extractive algorithmic overlord doesn't retroactively make the original impulse wrong. Build the service. Own the thing. The internet we want is just the one we bother to make.
+Building a Spotify clone in 2026 has roughly the same energy as opening a corner bookstore next to an Amazon fulfillment center – technically unnecessary, probably financially irrational, and also, somehow, the most defensible thing you could do. The monopoly doesn't win because it was the best idea, usually they abuse their market power, but then sometimes they've won because enough people decided someone else would handle it.  And our culture just wraps around it as "I guess this is my life meow". Every service that exists today started as someone's weekend project, someone's "wait, why can't I just" moment at 2 a.m. The fact that one of them doggedly scaled into an extractive algorithmic overlord for themselves and big labels doesn't retroactively make the original impulse wrong. Build the service. Own the thing. The internet we want is just the one we bother to make.
 
 Live demo <A HREF="https://ferric.gravitymonkey.com">here</A>.
 
@@ -33,7 +33,7 @@ Notes:
 - To use custom local ports/hosts, copy `.env.example` to `.env` and edit values there (`Makefile` auto-loads `.env`).
 - Default DB is SQLite (`sqlite:///./backend/ferric.db`).
 - Override with `DATABASE_URL=... make run` (SQLite/Postgres).
-- Admin UI: `http://127.0.0.1:8000/admin` (HTTP Basic auth, default `admin`/`admin`).
+- Admin UI: `http://127.0.0.1:8000/admin` (HTTP Basic auth; startup requires explicit `FERRIC_ADMIN_USER` / `FERRIC_ADMIN_PASSWORD`).
 - Tail Logs page: `http://127.0.0.1:8000/admin/logs`.
 - Log files are written to `backend/logs/backend.log` and `backend/logs/frontend.log`.
 

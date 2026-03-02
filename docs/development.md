@@ -84,10 +84,14 @@ Admin UI route:
 Auth:
 
 - HTTP Basic auth (lightweight POC)
-- Defaults: `admin` / `admin`
-- Override:
+- Required (backend startup fails if unset/empty):
 - `FERRIC_ADMIN_USER`
 - `FERRIC_ADMIN_PASSWORD`
+- App-level brute-force controls (defaults shown):
+- `FERRIC_ADMIN_MAX_FAILED_ATTEMPTS=5`
+- `FERRIC_ADMIN_MAX_FAILED_IP_ATTEMPTS=30`
+- `FERRIC_ADMIN_FAIL_WINDOW_SEC=600`
+- `FERRIC_ADMIN_LOCKOUT_SEC=900`
 
 Log config (safe file-backed admin tail endpoint):
 
@@ -116,10 +120,13 @@ Upload-time track metadata extraction:
 - Metadata is persisted in `track_metadata`.
 - New track create no longer requires manual `duration_sec`; default is `0` until audio upload extraction updates duration.
 - During in-flight upload, admin UI prompts before navigation/unload to reduce accidental interruption.
+- Upload limits (defaults shown):
+- `FERRIC_MAX_AUDIO_UPLOAD_MB=100`
+- `FERRIC_MAX_ARTWORK_UPLOAD_MB=8`
 - Metadata view endpoint:
   - `GET /api/v1/admin/tracks/{track_id}/metadata`
 - Optional dependency install:
-  - `python3 -m pip install librosa`
+  - `python3 -m pip install librosa Pillow`
 - Ensure `ffmpeg` is installed in PATH for upload-to-publish media readiness.
 
 For startup troubleshooting and request-id debugging commands, see:

@@ -13,6 +13,7 @@ from fastapi.staticfiles import StaticFiles
 from sqlalchemy.orm import Session
 
 from backend.app.admin_api import admin_v1
+from backend.app.admin_auth import validate_admin_credentials_config
 from backend.app.admin_ui import admin_ui
 from backend.app.catalog_repository import (
     get_catalog_page,
@@ -222,6 +223,7 @@ def post_listen_event(
 
 
 def create_app() -> FastAPI:
+    validate_admin_credentials_config()
     _ensure_file_logger()
     app = FastAPI(title="ferric-api", version="0.1.0")
 

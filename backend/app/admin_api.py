@@ -11,6 +11,7 @@ from uuid import uuid4
 
 from fastapi import APIRouter, Depends, File, Query, UploadFile
 from fastapi.responses import JSONResponse
+from PIL import Image, UnidentifiedImageError
 from sqlalchemy.orm import Session
 
 from backend.app.admin_auth import require_admin
@@ -49,8 +50,27 @@ logger = logging.getLogger("ferric.admin")
 admin_v1 = APIRouter(prefix="/api/v1/admin", tags=["admin"], dependencies=[Depends(require_admin)])
 
 
+def _env_int(name: str, default: int, *, minimum: int = 1) -> int:
+    raw = os.getenv(name)
+    if raw is None:
+        return default
+    try:
+        parsed = int(raw)
+    except ValueError:
+        return default
+    return max(minimum, parsed)
+
+
+MAX_AUDIO_UPLOAD_BYTES = _env_int("FERRIC_MAX_AUDIO_UPLOAD_MB", 100) * 1024 * 1024
+MAX_ARTWORK_UPLOAD_BYTES = _env_int("FERRIC_MAX_ARTWORK_UPLOAD_MB", 8) * 1024 * 1024
+
+
 def _bad_request(message: str) -> JSONResponse:
     return JSONResponse(status_code=400, content={"error": {"code": "BAD_REQUEST", "message": message}})
+
+
+def _payload_too_large(message: str) -> JSONResponse:
+    return JSONResponse(status_code=413, content={"error": {"code": "PAYLOAD_TOO_LARGE", "message": message}})
 
 
 def _track_not_found() -> JSONResponse:
@@ -163,8 +183,65 @@ def _probe_duration_sec(audio_path: Path) -> float | None:
         if duration is None:
             return None
         return float(duration)
-    except (FileNotFoundError, subprocess.CalledProcessError, ValueError, TypeError, json.JSONDecodeError):
+    except FileNotFoundError:
         return None
+    except subprocess.CalledProcessError:
+        return None
+    except (ValueError, TypeError, json.JSONDecodeError):
+        return None
+
+
+def _write_upload_to_path(file: UploadFile, output: Path, max_bytes: int) -> tuple[bool, int]:
+    written = 0
+    with output.open("wb") as fh:
+        while True:
+            chunk = file.file.read(1024 * 1024)
+            if not chunk:
+                break
+            written += len(chunk)
+            if written > max_bytes:
+                fh.close()
+                output.unlink(missing_ok=True)
+                return False, written
+            fh.write(chunk)
+    return True, written
+
+
+def _is_mp3_signature(header: bytes) -> bool:
+    if len(header) < 2:
+        return False
+    if header.startswith(b"ID3"):
+        return True
+    return header[0] == 0xFF and (header[1] & 0xE0) == 0xE0
+
+
+def _is_aac_signature(header: bytes) -> bool:
+    if len(header) < 2:
+        return False
+    return header[0] == 0xFF and (header[1] & 0xF0) == 0xF0
+
+
+def _is_audio_file_signature_valid(path: Path, suffix: str) -> bool:
+    with path.open("rb") as fh:
+        header = fh.read(64)
+    if suffix == ".wav":
+        return len(header) >= 12 and header.startswith(b"RIFF") and header[8:12] == b"WAVE"
+    if suffix == ".mp3":
+        return _is_mp3_signature(header)
+    if suffix == ".m4a":
+        return b"ftyp" in header[:32]
+    if suffix == ".aac":
+        return _is_aac_signature(header)
+    return False
+
+
+def _validate_artwork_file(path: Path) -> bool:
+    try:
+        with Image.open(path) as img:
+            img.verify()
+        return True
+    except (UnidentifiedImageError, OSError):
+        return False
 
 
 @admin_v1.get("/tracks", response_model=AdminTrackListResponse)
@@ -223,10 +300,18 @@ def admin_upload_audio(
     track_dir = RAW_AUDIO_ROOT / track_id
     track_dir.mkdir(parents=True, exist_ok=True)
     output = track_dir / f"source{suffix}"
-    output.write_bytes(file.file.read())
+    ok, _written = _write_upload_to_path(file, output, MAX_AUDIO_UPLOAD_BYTES)
+    if not ok:
+        return _payload_too_large(
+            f"audio upload exceeds limit ({MAX_AUDIO_UPLOAD_BYTES // (1024 * 1024)} MB)"
+        )
+    if not _is_audio_file_signature_valid(output, suffix):
+        output.unlink(missing_ok=True)
+        return _bad_request("invalid audio file content")
     rel_path = f"/assets/raw-audio/managed/{track_id}/{output.name}"
     row = set_track_audio_fallback(db, track_id, rel_path)
     if row is None:
+        output.unlink(missing_ok=True)
         return _track_not_found()
     _generate_hls(track_id, output)
 
@@ -271,7 +356,14 @@ def admin_upload_artwork(
 
     IMAGES_ROOT.mkdir(parents=True, exist_ok=True)
     output = IMAGES_ROOT / f"{track_id}_{uuid4().hex[:8]}{suffix}"
-    output.write_bytes(file.file.read())
+    ok, _written = _write_upload_to_path(file, output, MAX_ARTWORK_UPLOAD_BYTES)
+    if not ok:
+        return _payload_too_large(
+            f"artwork upload exceeds limit ({MAX_ARTWORK_UPLOAD_BYTES // (1024 * 1024)} MB)"
+        )
+    if not _validate_artwork_file(output):
+        output.unlink(missing_ok=True)
+        return _bad_request("invalid artwork file content")
     rel_path = f"/images/managed/{output.name}"
     row = set_track_artwork_path(db, track_id, rel_path)
     if row is None:

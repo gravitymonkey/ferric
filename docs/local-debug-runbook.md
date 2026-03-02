@@ -100,7 +100,8 @@ Playback works in Safari/WebKit but not Chromium/Firefox:
 Admin auth failures:
 
 - Ensure `FERRIC_ADMIN_USER` / `FERRIC_ADMIN_PASSWORD` match what you enter in browser prompt.
-- Defaults are `admin` / `admin` if env vars are unset.
+- Backend startup fails if either admin credential env var is unset/empty.
+- After repeated bad logins from one client/IP tuple, auth may return `429` until lockout expires.
 
 Tail logs page empty:
 

@@ -11,15 +11,22 @@ Dependency manifest:
 
 - `backend/requirements.txt`
 
-Default admin credentials for local POC:
-
-- user: `admin`
-- password: `admin`
-
-Override with env vars:
+Admin credentials are required (backend startup fails if either is unset/empty):
 
 - `FERRIC_ADMIN_USER`
 - `FERRIC_ADMIN_PASSWORD`
+
+App-level auth throttling env vars (optional, defaults shown):
+
+- `FERRIC_ADMIN_MAX_FAILED_ATTEMPTS=5`
+- `FERRIC_ADMIN_MAX_FAILED_IP_ATTEMPTS=30`
+- `FERRIC_ADMIN_FAIL_WINDOW_SEC=600`
+- `FERRIC_ADMIN_LOCKOUT_SEC=900`
+
+Upload limits env vars (optional, defaults shown):
+
+- `FERRIC_MAX_AUDIO_UPLOAD_MB=100`
+- `FERRIC_MAX_ARTWORK_UPLOAD_MB=8`
 
 Admin UI:
 
@@ -47,6 +54,7 @@ Optional extraction dependency:
 
 - Install `librosa` to enable upload-time audio feature extraction.
 - If `librosa` is not installed, uploads still succeed and metadata extraction is skipped.
+- `Pillow` is used for artwork-content validation on upload.
 
 ## Tests
 
